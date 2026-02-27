@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 620" font-family="Roboto, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#0078D3"/></marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#748FAA"/></marker>
+    <linearGradient id="gBrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#25477B"/><stop offset="100%" stop-color="#1B325A"/></linearGradient>
+    <linearGradient id="gAeris" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0891B2"/><stop offset="100%" stop-color="#065F73"/></linearGradient>
+    <linearGradient id="gGeotab" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2B6436"/><stop offset="100%" stop-color="#1A4D26"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.12"/></filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1100" height="620" rx="12" fill="#F9FAFB"/>
+  
+  <!-- Title -->
+  <text x="550" y="38" text-anchor="middle" font-size="18" font-weight="700" fill="#1F2833">Fleet Connectivity Intelligence — Data Flow Architecture</text>
+  <text x="550" y="58" text-anchor="middle" font-size="12" fill="#4E677E">How Geotab device telemetry and Aeris network intelligence combine in one MyGeotab Add-In</text>
+
+  <!-- ===== LEFT: GEOTAB PLATFORM ===== -->
+  <rect x="30" y="85" width="310" height="440" rx="10" fill="white" stroke="#B7E4C7" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="30" y="85" width="310" height="44" rx="10" fill="url(#gGeotab)"/>
+  <rect x="30" y="115" width="310" height="14" fill="url(#gGeotab)"/>
+  <text x="185" y="113" text-anchor="middle" font-size="15" font-weight="700" fill="white">Geotab Platform</text>
+  <text x="185" y="148" text-anchor="middle" font-size="10" fill="#4E677E">Device-Side Telemetry</text>
+
+  <!-- Geotab items -->
+  <rect x="50" y="165" width="270" height="32" rx="5" fill="#EDFEF2" stroke="#B7E4C7"/>
+  <text x="62" y="185" font-size="11" font-weight="600" fill="#2B6436">GO9 Device</text>
+  <text x="232" y="185" font-size="10" fill="#4E677E" text-anchor="middle">Signal strength, GPS, voltage</text>
+
+  <rect x="50" y="205" width="270" height="32" rx="5" fill="#EDFEF2" stroke="#B7E4C7"/>
+  <text x="62" y="225" font-size="11" font-weight="600" fill="#2B6436">StatusData API</text>
+  <text x="258" y="225" font-size="10" fill="#4E677E" text-anchor="middle">47K signal records / 7 days</text>
+
+  <rect x="50" y="245" width="270" height="32" rx="5" fill="#EDFEF2" stroke="#B7E4C7"/>
+  <text x="62" y="265" font-size="11" font-weight="600" fill="#2B6436">FaultData API</text>
+  <text x="240" y="265" font-size="10" fill="#4E677E" text-anchor="middle">Unplug, power, GPS faults</text>
+
+  <rect x="50" y="285" width="270" height="32" rx="5" fill="#EDFEF2" stroke="#B7E4C7"/>
+  <text x="62" y="305" font-size="11" font-weight="600" fill="#2B6436">Device API</text>
+  <text x="230" y="305" font-size="10" fill="#4E677E" text-anchor="middle">Name, serial, type, position</text>
+
+  <rect x="50" y="325" width="270" height="32" rx="5" fill="#EDFEF2" stroke="#B7E4C7"/>
+  <text x="62" y="345" font-size="11" font-weight="600" fill="#2B6436">DeviceStatusInfo API</text>
+  <text x="265" y="345" font-size="10" fill="#4E677E" text-anchor="middle">Comm status, driving state</text>
+
+  <!-- Geotab limitation box -->
+  <rect x="50" y="380" width="270" height="55" rx="5" fill="#FEF7ED" stroke="#F59E0B" stroke-dasharray="4,3"/>
+  <text x="185" y="400" text-anchor="middle" font-size="10" font-weight="700" fill="#59480D">⚠ GEOTAB ALONE SEES:</text>
+  <text x="185" y="415" text-anchor="middle" font-size="10" fill="#59480D">"Signal is 37 dBm" — but not WHY</text>
+  <text x="185" y="428" text-anchor="middle" font-size="9" fill="#8DA4B9">No tower, carrier, or SIM visibility</text>
+
+  <!-- Demo DB label -->
+  <rect x="60" y="448" width="250" height="28" rx="4" fill="#F2F5F7" stroke="#C0CCD8"/>
+  <text x="185" y="467" text-anchor="middle" font-size="10" fill="#748FAA">Demo Database — 50 simulated vehicles</text>
+
+  <!-- Supply chain badge -->
+  <rect x="75" y="490" width="210" height="24" rx="12" fill="#25477B"/>
+  <text x="180" y="506" text-anchor="middle" font-size="9" font-weight="600" fill="white">GEOTAB IS A TELENOR IoT CUSTOMER</text>
+
+  <!-- ===== RIGHT: AERIS / TELENOR PLATFORM ===== -->
+  <rect x="760" y="85" width="310" height="440" rx="10" fill="white" stroke="#A5D8E8" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="760" y="85" width="310" height="44" rx="10" fill="url(#gAeris)"/>
+  <rect x="760" y="115" width="310" height="14" fill="url(#gAeris)"/>
+  <text x="915" y="113" text-anchor="middle" font-size="15" font-weight="700" fill="white">Aeris IoT Accelerator</text>
+  <text x="915" y="148" text-anchor="middle" font-size="10" fill="#4E677E">Network-Side Intelligence</text>
+
+  <!-- Aeris items -->
+  <rect x="780" y="165" width="270" height="28" rx="5" fill="#E0F7FA" stroke="#A5D8E8"/>
+  <text x="792" y="184" font-size="10" font-weight="600" fill="#065F73">Subscription Location API</text>
+  <text x="1030" y="184" font-size="9" fill="#4E677E" text-anchor="end">Cell tower / carrier / RAT</text>
+
+  <rect x="780" y="199" width="270" height="28" rx="5" fill="#E0F7FA" stroke="#A5D8E8"/>
+  <text x="792" y="218" font-size="10" font-weight="600" fill="#065F73">Signalling Events API</text>
+  <text x="1030" y="218" font-size="9" fill="#4E677E" text-anchor="end">ATTACH / DETACH / HANDOVER</text>
+
+  <rect x="780" y="233" width="270" height="28" rx="5" fill="#E0F7FA" stroke="#A5D8E8"/>
+  <text x="792" y="252" font-size="10" font-weight="600" fill="#065F73">Signalling Usages API</text>
+  <text x="1030" y="252" font-size="9" fill="#4E677E" text-anchor="end">Data uploaded / downloaded</text>
+
+  <rect x="780" y="267" width="270" height="28" rx="5" fill="#E0F7FA" stroke="#A5D8E8"/>
+  <text x="792" y="286" font-size="10" font-weight="600" fill="#065F73">Consumer Connectivity API</text>
+  <text x="1030" y="286" font-size="9" fill="#4E677E" text-anchor="end">Data balance / plans</text>
+
+  <rect x="780" y="301" width="270" height="28" rx="5" fill="#E0F7FA" stroke="#A5D8E8"/>
+  <text x="792" y="320" font-size="10" font-weight="600" fill="#065F73">Incident Management API</text>
+  <text x="1030" y="320" font-size="9" fill="#4E677E" text-anchor="end">Trouble tickets / status</text>
+
+  <rect x="780" y="335" width="270" height="28" rx="5" fill="#E0F7FA" stroke="#A5D8E8"/>
+  <text x="792" y="354" font-size="10" font-weight="600" fill="#065F73">Org Signaling Aggregations API</text>
+  <text x="1030" y="354" font-size="9" fill="#4E677E" text-anchor="end">Fleet-wide error / traffic stats</text>
+
+  <rect x="780" y="369" width="270" height="28" rx="5" fill="#E0F7FA" stroke="#A5D8E8"/>
+  <text x="792" y="388" font-size="10" font-weight="600" fill="#065F73">Device Reconnect API</text>
+  <text x="1030" y="388" font-size="9" fill="#4E677E" text-anchor="end">Remote SIM re-attach ⚡</text>
+
+  <!-- Aeris capability box -->
+  <rect x="780" y="412" width="270" height="55" rx="5" fill="#FEF7ED" stroke="#F59E0B" stroke-dasharray="4,3"/>
+  <text x="915" y="432" text-anchor="middle" font-size="10" font-weight="700" fill="#59480D">⚠ AERIS ALONE SEES:</text>
+  <text x="915" y="447" text-anchor="middle" font-size="10" fill="#59480D">"SIM is on tower #64084" — but no GPS</text>
+  <text x="915" y="460" text-anchor="middle" font-size="9" fill="#8DA4B9">No vehicle identity or fleet context</text>
+
+  <!-- Mock data label -->
+  <rect x="790" y="478" width="250" height="28" rx="4" fill="#F2F5F7" stroke="#C0CCD8"/>
+  <text x="915" y="497" text-anchor="middle" font-size="10" fill="#748FAA">7 OpenAPI specs — mock data from schemas</text>
+
+  <!-- Supply chain badge -->
+  <rect x="805" y="520" width="210" height="24" rx="12" fill="#0891B2"/>
+  <text x="910" y="536" text-anchor="middle" font-size="9" font-weight="600" fill="white">POWERED BY TELENOR IoT</text>
+
+  <!-- ===== CENTER: THE ADD-IN ===== -->
+  <rect x="385" y="135" width="330" height="345" rx="10" fill="white" stroke="#0078D3" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="385" y="135" width="330" height="44" rx="10" fill="url(#gBrand)"/>
+  <rect x="385" y="165" width="330" height="14" fill="url(#gBrand)"/>
+  <text x="550" y="163" text-anchor="middle" font-size="14" font-weight="700" fill="white">Fleet Connectivity Intelligence</text>
+  <text x="550" y="193" text-anchor="middle" font-size="10" fill="#4E677E">MyGeotab Add-In — Zenith Design System</text>
+
+  <!-- Add-In tabs -->
+  <rect x="405" y="210" width="145" height="24" rx="4" fill="#FFECEB" stroke="#C51A11"/>
+  <text x="477" y="226" text-anchor="middle" font-size="9" font-weight="700" fill="#C51A11">① Problem Alerts</text>
+
+  <rect x="560" y="210" width="135" height="24" rx="4" fill="#EBF6FF" stroke="#0078D3"/>
+  <text x="627" y="226" text-anchor="middle" font-size="9" font-weight="700" fill="#0078D3">② Coverage Map</text>
+
+  <rect x="405" y="240" width="145" height="24" rx="4" fill="#EDFEF2" stroke="#2B6436"/>
+  <text x="477" y="256" text-anchor="middle" font-size="9" font-weight="700" fill="#2B6436">③ Fleet Map</text>
+
+  <rect x="560" y="240" width="135" height="24" rx="4" fill="#EBF6FF" stroke="#0078D3"/>
+  <text x="627" y="256" text-anchor="middle" font-size="9" font-weight="700" fill="#0078D3">④ Data Usage</text>
+
+  <rect x="405" y="270" width="145" height="24" rx="4" fill="#F3E8FF" stroke="#6C3FC0"/>
+  <text x="477" y="286" text-anchor="middle" font-size="9" font-weight="700" fill="#6C3FC0">⑤ Network Diagnostics</text>
+
+  <rect x="560" y="270" width="135" height="24" rx="4" fill="#FEF7ED" stroke="#B8860B"/>
+  <text x="627" y="286" text-anchor="middle" font-size="9" font-weight="700" fill="#B8860B">⑥ Errors &amp; Export</text>
+
+  <!-- Key capabilities -->
+  <text x="550" y="316" text-anchor="middle" font-size="10" font-weight="700" fill="#1F2833">NEW CAPABILITIES</text>
+  <text x="415" y="335" font-size="9" fill="#2B6436">✓ Root cause connectivity diagnostics</text>
+  <text x="415" y="350" font-size="9" fill="#2B6436">✓ Proactive health-tier scoring</text>
+  <text x="415" y="365" font-size="9" fill="#2B6436">✓ Geographic coverage heatmap</text>
+  <text x="415" y="380" font-size="9" fill="#2B6436">✓ SIM data usage per vehicle</text>
+  <text x="415" y="395" font-size="9" fill="#2B6436">✓ Fleet breakdown by carrier/country/RAT</text>
+  <text x="415" y="410" font-size="9" fill="#2B6436">✓ Error log with IMSI/IMEI export</text>
+  <text x="415" y="425" font-size="9" fill="#2B6436">✓ Session &amp; location update success rates</text>
+  <text x="415" y="440" font-size="9" fill="#0078D3">⚡ Future: Remote SIM reconnect from MyGeotab</text>
+
+  <!-- Correlation box -->
+  <rect x="405" y="452" width="290" height="20" rx="3" fill="#25477B"/>
+  <text x="550" y="466" text-anchor="middle" font-size="9" font-weight="700" fill="white">DEVICE ↔ IMSI ↔ CELL TOWER — the link that creates value</text>
+
+  <!-- ===== ARROWS ===== -->
+  <!-- Geotab to Add-In -->
+  <line x1="340" y1="230" x2="380" y2="230" stroke="#2B6436" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="340" y1="270" x2="380" y2="270" stroke="#2B6436" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="340" y1="310" x2="380" y2="310" stroke="#2B6436" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Aeris to Add-In -->
+  <line x1="760" y1="230" x2="720" y2="230" stroke="#0891B2" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="760" y1="270" x2="720" y2="270" stroke="#0891B2" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="760" y1="310" x2="720" y2="310" stroke="#0891B2" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="760" y1="350" x2="720" y2="350" stroke="#0891B2" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Supply chain arrow at bottom -->
+  <rect x="300" y="555" width="500" height="50" rx="8" fill="#F2F5F7" stroke="#C0CCD8"/>
+  <text x="550" y="575" text-anchor="middle" font-size="10" font-weight="700" fill="#25477B">SUPPLY CHAIN</text>
+  <text x="550" y="594" text-anchor="middle" font-size="11" fill="#4E677E">Aeris IoT Platform  →  Telenor IoT (Connectivity Supplier)  →  Geotab GO9 Devices  →  Fleet Vehicles</text>
+</svg>
