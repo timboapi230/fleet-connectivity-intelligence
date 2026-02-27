@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet Connectivity Intelligence</title>
+</head>
+<body>
+<style>
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+
+:root {
+  --zen-text-primary: #1F2833;
+  --zen-text-secondary: #4E677E;
+  --zen-text-placeholder: #8DA4B9;
+  --zen-text-hyperlink: #005AA8;
+  --zen-bg-main: #FFFFFF;
+  --zen-bg-content-0: #F9FAFB;
+  --zen-bg-content-1: #F2F5F7;
+  --zen-bg-content-2: #D9E1E8;
+  --zen-bg-hover: #E6EBEF;
+  --zen-bg-brand: #25477B;
+  --zen-border: #C0CCD8;
+  --zen-border-secondary: #748FAA;
+  --zen-action-primary: #0078D3;
+  --zen-action-hover: #005AA8;
+  --zen-action-active: #004080;
+  --zen-accent-warning-bg: #FEF7ED;
+  --zen-accent-warning-text: #59480D;
+  --zen-accent-error-bg: #FFECEB;
+  --zen-accent-error-text: #A01F0E;
+  --zen-accent-success-bg: #EDFEF2;
+  --zen-accent-success-text: #2B6436;
+  --zen-accent-info-bg: #EBF6FF;
+  --zen-accent-info-text: #25477B;
+  --fci-critical: #C51A11; --fci-critical-bg: #FFECEB;
+  --fci-warning: #B8860B; --fci-warning-bg: #FEF7ED;
+  --fci-minor: #0078D3; --fci-minor-bg: #EBF6FF;
+  --fci-healthy: #2B6436; --fci-healthy-bg: #EDFEF2;
+  --fci-lte: #6C3FC0; --fci-wcdma: #B8860B; --fci-gsm: #C51A11;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body, html { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--zen-bg-content-0); color:var(--zen-text-primary); overflow-x:hidden; min-height:100vh; font-size:14px; }
+
+.fci-header { background:var(--zen-bg-brand); padding:16px 24px; position:sticky; top:0; z-index:1000; box-shadow:0 1px 3px rgba(0,0,0,0.12); }
+.fci-header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.fci-brand { display:flex; align-items:center; gap:14px; }
+.fci-logo { width:36px; height:36px; background:var(--zen-action-primary); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; color:#fff; }
+.fci-title { font-size:17px; font-weight:700; color:#FFFFFF; letter-spacing:-0.2px; }
+.fci-subtitle { font-size:11px; color:#C0CCD8; font-weight:400; letter-spacing:0.5px; margin-top:1px; }
+.fci-timestamp { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:12px; color:#C0CCD8; background:rgba(255,255,255,0.08); padding:6px 12px; border-radius:6px; }
+.fci-pulse { display:inline-block; width:7px; height:7px; background:#46AF55; border-radius:50%; margin-right:6px; animation:fci-pulse-dot 2s infinite; }
+@keyframes fci-pulse-dot { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(70,175,85,0.4)} 50%{opacity:0.7;box-shadow:0 0 0 5px rgba(70,175,85,0)} }
+
+.fci-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; }
+.fci-kpi { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px 14px; text-align:center; }
+.fci-kpi-val { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:18px; font-weight:700; color:#FFFFFF; line-height:1.2; }
+.fci-kpi-label { font-size:9px; color:#A6B8C9; text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
+
+.fci-tabs { display:flex; gap:0; padding:0 24px; background:var(--zen-bg-main); border-bottom:1px solid var(--zen-border); overflow-x:auto; }
+.fci-tab { padding:12px 18px; font-size:13px; font-weight:500; color:var(--zen-text-secondary); background:transparent; border:none; border-bottom:2px solid transparent; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:8px; font-family:inherit; white-space:nowrap; }
+.fci-tab:hover { color:var(--zen-text-primary); background:var(--zen-bg-content-0); }
+.fci-tab.active { color:var(--zen-action-primary); border-bottom-color:var(--zen-action-primary); font-weight:700; }
+.fci-tab-badge { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; background:var(--fci-critical); color:#fff; }
+.fci-tab-badge.err { background:var(--fci-warning); }
+
+.fci-main { padding:20px 24px; min-height:calc(100vh - 200px); }
+.fci-panel { display:none; }
+.fci-panel.active { display:block; }
+
+.fci-section-title { font-size:13px; font-weight:700; color:var(--zen-text-secondary); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
+.fci-section-title::after { content:''; flex:1; height:1px; background:var(--zen-border); }
+
+/* ALERT CARDS */
+.fci-alert-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.fci-alert-card { background:var(--zen-bg-main); border:1px solid var(--zen-border); border-radius:8px; padding:16px; transition:all 0.15s; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+.fci-alert-card:hover { box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+.fci-alert-card.critical { border-left:4px solid var(--fci-critical); background:linear-gradient(135deg,var(--fci-critical-bg),var(--zen-bg-main)); }
+.fci-alert-card.warning { border-left:4px solid var(--fci-warning); background:linear-gradient(135deg,var(--fci-warning-bg),var(--zen-bg-main)); }
+.fci-alert-card.minor { border-left:4px solid var(--fci-minor); background:linear-gradient(135deg,var(--fci-minor-bg),var(--zen-bg-main)); }
+.fci-alert-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.fci-alert-name { font-size:15px; font-weight:700; color:var(--zen-text-primary); }
+.fci-alert-tier { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px; }
+.fci-alert-tier.critical { background:var(--fci-critical); color:#fff; }
+.fci-alert-tier.warning { background:var(--fci-warning); color:#fff; }
+.fci-alert-tier.minor { background:var(--zen-action-primary); color:#fff; }
+.fci-alert-tier.healthy { background:var(--fci-healthy); color:#fff; }
+.fci-alert-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+.fci-metric { background:var(--zen-bg-content-0); border:1px solid var(--zen-bg-content-2); border-radius:6px; padding:8px; text-align:center; }
+.fci-metric-val { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:14px; font-weight:700; }
+.fci-metric-label { font-size:9px; color:var(--zen-text-placeholder); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+.fci-incident-list { list-style:none; }
+.fci-incident-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--zen-bg-content-1); font-size:12px; }
+.fci-inc-status { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:9px; padding:2px 6px; border-radius:3px; font-weight:700; }
+.fci-inc-status.NEW { background:var(--fci-critical-bg); color:var(--fci-critical); }
+.fci-inc-status.ASSIGNED { background:var(--fci-warning-bg); color:var(--fci-warning); }
+.fci-inc-status.IN_PROGRESS { background:var(--fci-minor-bg); color:var(--zen-action-primary); }
+.fci-event-log { margin-top:10px; background:var(--zen-bg-content-0); border:1px solid var(--zen-bg-content-2); border-radius:6px; padding:8px; max-height:0; overflow:hidden; transition:max-height 0.3s; }
+.fci-alert-card.expanded .fci-event-log { max-height:300px; overflow-y:auto; }
+.fci-event-row { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:10px; color:var(--zen-text-secondary); padding:3px 0; display:flex; gap:10px; }
+.fci-event-code { color:var(--zen-action-primary); min-width:100px; }
+
+/* MAP */
+.fci-map-wrap { border-radius:8px; overflow:hidden; border:1px solid var(--zen-border); height:550px; position:relative; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+.fci-map-legend { position:absolute; bottom:16px; right:16px; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border:1px solid var(--zen-border); border-radius:8px; padding:12px 14px; z-index:999; font-size:11px; color:var(--zen-text-primary); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.fci-legend-item { display:flex; align-items:center; gap:8px; padding:3px 0; }
+.fci-legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* TABLE */
+.fci-table-wrap { background:var(--zen-bg-main); border:1px solid var(--zen-border); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+.fci-table { width:100%; border-collapse:collapse; font-size:13px; }
+.fci-table th { background:var(--zen-bg-content-1); padding:10px 14px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--zen-text-secondary); font-weight:700; border-bottom:1px solid var(--zen-border); position:sticky; top:0; }
+.fci-table td { padding:10px 14px; border-bottom:1px solid var(--zen-bg-content-1); vertical-align:middle; }
+.fci-table tr:hover td { background:var(--zen-bg-hover); }
+.fci-table-scroll { max-height:600px; overflow-y:auto; }
+.fci-usage-bar { width:100%; height:6px; background:var(--zen-bg-content-2); border-radius:3px; overflow:hidden; }
+.fci-usage-fill { height:100%; border-radius:3px; }
+.fci-rat-badge { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:10px; padding:2px 6px; border-radius:3px; font-weight:700; }
+.fci-rat-badge.LTE { background:#EDE9F6; color:var(--fci-lte); }
+.fci-rat-badge.WCDMA { background:var(--fci-warning-bg); color:var(--fci-warning); }
+.fci-rat-badge.GSM { background:var(--fci-critical-bg); color:var(--fci-critical); }
+
+/* DIAGNOSTIC CARDS */
+.fci-diag-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.fci-diag-card { background:var(--zen-bg-main); border:1px solid var(--zen-border); border-radius:8px; padding:16px; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+.fci-diag-card-title { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--zen-text-placeholder); margin-bottom:8px; }
+.fci-diag-card-val { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:24px; font-weight:700; color:var(--zen-text-primary); }
+.fci-diag-card-sub { font-size:11px; color:var(--zen-text-secondary); margin-top:4px; }
+.fci-diag-card-bar { height:4px; background:var(--zen-bg-content-2); border-radius:2px; margin-top:8px; overflow:hidden; }
+.fci-diag-card-fill { height:100%; border-radius:2px; }
+
+/* BREAKDOWN TABS */
+.fci-sub-tabs { display:flex; gap:0; margin-bottom:16px; border-bottom:1px solid var(--zen-bg-content-2); }
+.fci-sub-tab { padding:8px 16px; font-size:12px; font-weight:500; color:var(--zen-text-secondary); background:transparent; border:none; border-bottom:2px solid transparent; cursor:pointer; font-family:inherit; }
+.fci-sub-tab:hover { color:var(--zen-text-primary); }
+.fci-sub-tab.active { color:var(--zen-action-primary); border-bottom-color:var(--zen-action-primary); font-weight:700; }
+
+/* ERROR LOG */
+.fci-err-badge { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-size:9px; padding:2px 6px; border-radius:3px; font-weight:700; background:var(--fci-critical-bg); color:var(--fci-critical); }
+.fci-err-desc { font-size:11px; color:var(--zen-text-secondary); font-style:italic; margin-top:2px; }
+
+/* EXPORT BTN */
+.fci-btn { font-family:inherit; font-size:12px; font-weight:600; padding:8px 16px; border-radius:6px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s; }
+.fci-btn-primary { background:var(--zen-action-primary); color:#fff; }
+.fci-btn-primary:hover { background:var(--zen-action-hover); }
+.fci-btn-secondary { background:var(--zen-bg-content-1); color:var(--zen-text-primary); border:1px solid var(--zen-border); }
+.fci-btn-secondary:hover { background:var(--zen-bg-hover); }
+.fci-btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+.fci-export-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding:12px 16px; background:var(--zen-bg-main); border:1px solid var(--zen-border); border-radius:8px; }
+
+.fci-healthy-summary { background:var(--fci-healthy-bg); border:1px solid #B7E4C7; border-radius:8px; padding:14px 20px; margin-top:16px; display:flex; align-items:center; gap:12px; }
+.fci-healthy-icon { font-size:22px; }
+.fci-healthy-text { font-size:13px; color:var(--zen-text-secondary); }
+.fci-healthy-count { font-family:'SF Mono',SFMono-Regular,'Roboto Mono',Menlo,Consolas,monospace; font-weight:700; color:var(--fci-healthy); }
+
+@media (max-width:1100px) { .fci-kpis{grid-template-columns:repeat(3,1fr)} .fci-diag-grid{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:900px) { .fci-alert-grid{grid-template-columns:1fr} }
+
+</style>
+<div class="fci-header">
+  <div class="fci-header-top">
+    <div class="fci-brand">
+      <div class="fci-logo">CI</div>
+      <div>
+        <div class="fci-title">Fleet Connectivity Intelligence</div>
+        <div class="fci-subtitle">Aeris IoT Accelerator &times; Geotab Telematics</div>
+      </div>
+    </div>
+    <div class="fci-timestamp">
+      <span class="fci-pulse"></span>
+      <span id="fci-time">LIVE</span>
+    </div>
+  </div>
+  <div class="fci-kpis" id="fci-kpis"></div>
+</div>
+<div class="fci-tabs" id="fci-tabs"></div>
+<div class="fci-main">
+  <div class="fci-panel active" id="panel-alerts"></div>
+  <div class="fci-panel" id="panel-coverage"></div>
+  <div class="fci-panel" id="panel-fleet"></div>
+  <div class="fci-panel" id="panel-data"></div>
+  <div class="fci-panel" id="panel-diag"></div>
+  <div class="fci-panel" id="panel-errors"></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+try{
+var MOCK = {"v":[{"id":"b1","nm":"Demo - 01","lat":41.897522,"lon":-8.85736942,"spd":0,"drv":false,"comm":true,"imsi":"214010000000001","sig":80,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":205,"plan":2048,"balPct":90.0,"drops":1,"uptime":99.2,"lastDisc":4421,"incidents":[],"events":[{"id":"EVT-01-000","code":"HANDOVER","occurred_at":"2026-02-27T07:50:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":411237,"pdptx":139411}],"imei":"35684900000191","pdpAttempts":13,"pdpSuccess":13,"locUpdates":85,"locSuccess":84,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":134973809,"ulBytes":79984270,"country":"Spain"},{"id":"b2","nm":"Demo - 02","lat":41.8975754,"lon":-8.85744667,"spd":0,"drv":false,"comm":true,"imsi":"214010000000002","sig":88,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":274,"plan":2048,"balPct":86.6,"drops":0,"uptime":100.0,"lastDisc":7913,"incidents":[],"events":[{"id":"EVT-02-000","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T15:14:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":188207,"pdptx":25553}],"imei":"35684900000223","pdpAttempts":27,"pdpSuccess":27,"locUpdates":104,"locSuccess":104,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":177769806,"ulBytes":109540017,"country":"Spain"},{"id":"b3","nm":"Demo - 03","lat":41.8975754,"lon":-8.85744667,"spd":0,"drv":false,"comm":true,"imsi":"214010000000003","sig":92,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":158,"plan":2048,"balPct":92.3,"drops":0,"uptime":100.0,"lastDisc":2773,"incidents":[],"events":[{"id":"EVT-03-000","code":"ATTACH","occurred_at":"2026-02-27T14:21:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":275659,"pdptx":22354}],"imei":"35684900000339","pdpAttempts":26,"pdpSuccess":24,"locUpdates":53,"locSuccess":52,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":106709305,"ulBytes":58965702,"country":"Spain"},{"id":"b4","nm":"Demo - 04","lat":41.9144211,"lon":-8.84741116,"spd":46,"drv":true,"comm":true,"imsi":"214010000000004","sig":85,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":338,"plan":2048,"balPct":83.5,"drops":1,"uptime":98.5,"lastDisc":7016,"incidents":[],"events":[{"id":"EVT-04-000","code":"DETACH","occurred_at":"2026-02-27T00:22:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":219929,"pdptx":58147}],"imei":"35684900000485","pdpAttempts":18,"pdpSuccess":18,"locUpdates":70,"locSuccess":67,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":232347772,"ulBytes":122070915,"country":"Spain"},{"id":"b5","nm":"Demo - 05","lat":42.0410385,"lon":-8.64806366,"spd":0,"drv":false,"comm":true,"imsi":"214010000000005","sig":98,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"131","cell":"47723","used":272,"plan":2048,"balPct":86.7,"drops":1,"uptime":98.7,"lastDisc":3187,"incidents":[],"events":[{"id":"EVT-05-000","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T05:27:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"131","cell_id":"47723","pdprx":85407,"pdptx":158540}],"imei":"35684900000537","pdpAttempts":20,"pdpSuccess":20,"locUpdates":61,"locSuccess":58,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":191604696,"ulBytes":93607975,"country":"Portugal"},{"id":"b6","nm":"Demo - 06","lat":41.912014,"lon":-8.85140514,"spd":0,"drv":false,"comm":true,"imsi":"214010000000006","sig":76,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":256,"plan":2048,"balPct":87.5,"drops":0,"uptime":100.0,"lastDisc":8354,"incidents":[],"events":[{"id":"EVT-06-000","code":"SERVICE_REQUEST","occurred_at":"2026-02-26T18:34:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":475419,"pdptx":164549}],"imei":"35684900000654","pdpAttempts":29,"pdpSuccess":28,"locUpdates":55,"locSuccess":52,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":213305028,"ulBytes":55130427,"country":"Spain"},{"id":"b7","nm":"Demo - 07","lat":41.8974724,"lon":-8.85739517,"spd":0,"drv":false,"comm":true,"imsi":"214010000000007","sig":75,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":163,"plan":2048,"balPct":92.0,"drops":1,"uptime":99.1,"lastDisc":1769,"incidents":[],"events":[{"id":"EVT-07-000","code":"ATTACH","occurred_at":"2026-02-27T13:24:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":21224,"pdptx":158264}],"imei":"35684900000758","pdpAttempts":12,"pdpSuccess":10,"locUpdates":87,"locSuccess":85,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":126635518,"ulBytes":44282369,"country":"Spain"},{"id":"b8","nm":"Demo - 08","lat":42.1180687,"lon":-8.8129282,"spd":5,"drv":false,"comm":true,"imsi":"214010000000008","sig":88,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"131","cell":"47723","used":344,"plan":2048,"balPct":83.2,"drops":0,"uptime":100.0,"lastDisc":5010,"incidents":[],"events":[{"id":"EVT-08-000","code":"ATTACH","occurred_at":"2026-02-27T07:29:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"131","cell_id":"47723","pdprx":110487,"pdptx":51364}],"imei":"35684900000815","pdpAttempts":17,"pdpSuccess":16,"locUpdates":60,"locSuccess":59,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":243849163,"ulBytes":116860980,"country":"Portugal"},{"id":"b9","nm":"Demo - 09","lat":41.8974724,"lon":-8.85744667,"spd":0,"drv":false,"comm":true,"imsi":"214010000000009","sig":104,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":237,"plan":2048,"balPct":88.4,"drops":1,"uptime":98.1,"lastDisc":2475,"incidents":[],"events":[{"id":"EVT-09-000","code":"HANDOVER","occurred_at":"2026-02-27T06:56:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":211860,"pdptx":1525}],"imei":"35684900000968","pdpAttempts":30,"pdpSuccess":29,"locUpdates":70,"locSuccess":68,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":159520530,"ulBytes":88991981,"country":"Spain"},{"id":"bA","nm":"Demo - 10","lat":41.8974724,"lon":-8.85744667,"spd":0,"drv":false,"comm":true,"imsi":"214010000000010","sig":92,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":146,"plan":2048,"balPct":92.9,"drops":1,"uptime":99.0,"lastDisc":1943,"incidents":[],"events":[{"id":"EVT-10-000","code":"HANDOVER","occurred_at":"2026-02-27T00:33:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":40973,"pdptx":68603}],"imei":"35684900001044","pdpAttempts":30,"pdpSuccess":30,"locUpdates":71,"locSuccess":70,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":106008934,"ulBytes":47083161,"country":"Spain"},{"id":"bB","nm":"Demo - 11","lat":41.8974724,"lon":-8.8577795,"spd":0,"drv":false,"comm":true,"imsi":"214010000000011","sig":69,"tier":"minor","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":438,"plan":2048,"balPct":78.6,"drops":3,"uptime":96.7,"lastDisc":868,"incidents":[],"events":[{"id":"EVT-11-001","code":"ATTACH","occurred_at":"2026-02-27T15:39:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":153026,"pdptx":72588},{"id":"EVT-11-002","code":"HANDOVER","occurred_at":"2026-02-27T08:36:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":317238,"pdptx":18594},{"id":"EVT-11-000","code":"TAU","occurred_at":"2026-02-27T07:35:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":430993,"pdptx":190492}],"imei":"35684900001144","pdpAttempts":59,"pdpSuccess":45,"locUpdates":188,"locSuccess":156,"errCount":2,"errTypes":["CONTEXT_DEACTIVATION","NETWORK_TIMEOUT"],"lastErr":"2026-02-27T14:02:00Z","dlBytes":349513462,"ulBytes":109762825,"country":"Spain"},{"id":"bC","nm":"Demo - 12","lat":41.8974724,"lon":-8.8577795,"spd":0,"drv":false,"comm":true,"imsi":"214010000000012","sig":76,"tier":"minor","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":214,"plan":2048,"balPct":89.6,"drops":2,"uptime":96.3,"lastDisc":668,"incidents":[],"events":[{"id":"EVT-12-002","code":"SERVICE_REQUEST","occurred_at":"2026-02-26T23:42:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":206630,"pdptx":34733},{"id":"EVT-12-000","code":"PDP_DEACTIVATE","occurred_at":"2026-02-26T22:34:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":375303,"pdptx":58282},{"id":"EVT-12-001","code":"SERVICE_REQUEST","occurred_at":"2026-02-26T19:16:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":167750,"pdptx":170634}],"imei":"35684900001261","pdpAttempts":38,"pdpSuccess":27,"locUpdates":127,"locSuccess":157,"errCount":3,"errTypes":["NETWORK_TIMEOUT"],"lastErr":"2026-02-27T11:56:00Z","dlBytes":175681187,"ulBytes":48714076,"country":"Spain"},{"id":"bD","nm":"Demo - 13","lat":42.2348289,"lon":-8.71308804,"spd":0,"drv":false,"comm":true,"imsi":"214010000000013","sig":75,"tier":"minor","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":371,"plan":2048,"balPct":81.9,"drops":2,"uptime":96.8,"lastDisc":1142,"incidents":[],"events":[{"id":"EVT-13-000","code":"TAU","occurred_at":"2026-02-27T09:42:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":360579,"pdptx":84308},{"id":"EVT-13-002","code":"DETACH","occurred_at":"2026-02-26T22:48:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":309642,"pdptx":185352},{"id":"EVT-13-001","code":"PDP_DEACTIVATE","occurred_at":"2026-02-26T18:25:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":279582,"pdptx":176756}],"imei":"35684900001368","pdpAttempts":34,"pdpSuccess":33,"locUpdates":117,"locSuccess":116,"errCount":5,"errTypes":["NETWORK_TIMEOUT","CONTEXT_DEACTIVATION"],"lastErr":"2026-02-27T10:14:00Z","dlBytes":311009290,"ulBytes":78012405,"country":"Spain"},{"id":"bE","nm":"Demo - 14","lat":41.897522,"lon":-8.85770226,"spd":0,"drv":false,"comm":true,"imsi":"214010000000014","sig":65,"tier":"minor","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":208,"plan":2048,"balPct":89.8,"drops":1,"uptime":99.4,"lastDisc":948,"incidents":[],"events":[{"id":"EVT-14-002","code":"ATTACH","occurred_at":"2026-02-27T08:56:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":33943,"pdptx":108940},{"id":"EVT-14-001","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T08:24:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":300996,"pdptx":101124},{"id":"EVT-14-000","code":"TAU","occurred_at":"2026-02-27T02:31:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":232916,"pdptx":32593}],"imei":"35684900001427","pdpAttempts":46,"pdpSuccess":40,"locUpdates":111,"locSuccess":181,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":"2026-02-27T13:10:00Z","dlBytes":165413389,"ulBytes":52690418,"country":"Spain"},{"id":"bF","nm":"Demo - 15","lat":42.1971474,"lon":-8.65274906,"spd":61,"drv":true,"comm":true,"imsi":"214010000000015","sig":69,"tier":"minor","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":281,"plan":2048,"balPct":86.3,"drops":2,"uptime":97.9,"lastDisc":397,"incidents":[],"events":[{"id":"EVT-15-002","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T10:33:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":140806,"pdptx":8718},{"id":"EVT-15-000","code":"ATTACH","occurred_at":"2026-02-26T20:28:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":55306,"pdptx":7273},{"id":"EVT-15-001","code":"ATTACH","occurred_at":"2026-02-26T19:04:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":489906,"pdptx":131564}],"imei":"35684900001564","pdpAttempts":49,"pdpSuccess":27,"locUpdates":149,"locSuccess":133,"errCount":5,"errTypes":["NETWORK_TIMEOUT","CONTEXT_DEACTIVATION"],"lastErr":"2026-02-27T13:46:00Z","dlBytes":183540444,"ulBytes":111109411,"country":"Spain"},{"id":"b10","nm":"Demo - 16","lat":42.2594833,"lon":-8.4592638,"spd":35,"drv":true,"comm":true,"imsi":"214010000000016","sig":82,"tier":"healthy","rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"234","cell":"18145","used":125,"plan":2048,"balPct":93.9,"drops":0,"uptime":100.0,"lastDisc":7088,"incidents":[],"events":[{"id":"EVT-16-000","code":"SERVICE_REQUEST","occurred_at":"2026-02-27T16:22:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"03","lac":"234","cell_id":"18145","pdprx":437179,"pdptx":20432}],"imei":"35684900001678","pdpAttempts":18,"pdpSuccess":16,"locUpdates":93,"locSuccess":93,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":90040310,"ulBytes":41031689,"country":"Portugal"},{"id":"b11","nm":"Demo - 17","lat":42.1242371,"lon":-8.79761887,"spd":16,"drv":true,"comm":true,"imsi":"214010000000017","sig":88,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"131","cell":"47723","used":169,"plan":2048,"balPct":91.7,"drops":0,"uptime":100.0,"lastDisc":7059,"incidents":[],"events":[{"id":"EVT-17-000","code":"HANDOVER","occurred_at":"2026-02-27T11:38:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"131","cell_id":"47723","pdprx":20673,"pdptx":135874}],"imei":"35684900001768","pdpAttempts":10,"pdpSuccess":8,"locUpdates":83,"locSuccess":82,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":137178411,"ulBytes":40030932,"country":"Portugal"},{"id":"b12","nm":"Demo - 18","lat":42.2643967,"lon":-8.45685768,"spd":0,"drv":false,"comm":true,"imsi":"214010000000018","sig":99,"tier":"healthy","rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"234","cell":"18145","used":313,"plan":2048,"balPct":84.7,"drops":1,"uptime":99.5,"lastDisc":5853,"incidents":[],"events":[{"id":"EVT-18-000","code":"PDP_ACTIVATE","occurred_at":"2026-02-26T17:47:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"03","lac":"234","cell_id":"18145","pdprx":245620,"pdptx":123894}],"imei":"35684900001848","pdpAttempts":30,"pdpSuccess":28,"locUpdates":75,"locSuccess":74,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":246974435,"ulBytes":81229852,"country":"Portugal"},{"id":"b13","nm":"Demo - 19","lat":42.2643967,"lon":-8.45685768,"spd":0,"drv":false,"comm":true,"imsi":"214010000000019","sig":102,"tier":"healthy","rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"234","cell":"18145","used":128,"plan":2048,"balPct":93.8,"drops":0,"uptime":100.0,"lastDisc":3202,"incidents":[],"events":[{"id":"EVT-19-000","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T16:00:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"03","lac":"234","cell_id":"18145","pdprx":3119,"pdptx":61580}],"imei":"35684900001979","pdpAttempts":26,"pdpSuccess":26,"locUpdates":91,"locSuccess":88,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":83533563,"ulBytes":50684164,"country":"Portugal"},{"id":"b14","nm":"Demo - 20","lat":42.2643967,"lon":-8.45685768,"spd":0,"drv":false,"comm":true,"imsi":"214010000000020","sig":95,"tier":"healthy","rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"234","cell":"18145","used":212,"plan":2048,"balPct":89.6,"drops":1,"uptime":99.4,"lastDisc":4029,"incidents":[],"events":[{"id":"EVT-20-000","code":"DETACH","occurred_at":"2026-02-26T18:17:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"03","lac":"234","cell_id":"18145","pdprx":63443,"pdptx":172402}],"imei":"35684900002056","pdpAttempts":19,"pdpSuccess":19,"locUpdates":57,"locSuccess":56,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":137186987,"ulBytes":85111124,"country":"Portugal"},{"id":"b15","nm":"Demo - 21","lat":41.5282936,"lon":0.516377628,"spd":0,"drv":false,"comm":true,"imsi":"214010000000021","sig":89,"tier":"healthy","rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"354","cell":"12245","used":271,"plan":2048,"balPct":86.8,"drops":0,"uptime":100.0,"lastDisc":9526,"incidents":[],"events":[{"id":"EVT-21-000","code":"DETACH","occurred_at":"2026-02-27T02:21:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"03","lac":"354","cell_id":"12245","pdprx":228352,"pdptx":24020}],"imei":"35684900002172","pdpAttempts":12,"pdpSuccess":10,"locUpdates":66,"locSuccess":65,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":224310537,"ulBytes":59853558,"country":"Portugal"},{"id":"b16","nm":"Demo - 22","lat":41.0981636,"lon":1.09872639,"spd":88,"drv":true,"comm":true,"imsi":"214010000000022","sig":83,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":239,"plan":2048,"balPct":88.3,"drops":0,"uptime":100.0,"lastDisc":1609,"incidents":[],"events":[{"id":"EVT-22-000","code":"TAU","occurred_at":"2026-02-27T04:24:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":135674,"pdptx":130545}],"imei":"35684900002231","pdpAttempts":18,"pdpSuccess":16,"locUpdates":104,"locSuccess":103,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":186100178,"ulBytes":64509485,"country":"Portugal"},{"id":"b17","nm":"Demo - 23","lat":39.8665466,"lon":-0.122188903,"spd":88,"drv":true,"comm":true,"imsi":"214010000000023","sig":104,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":264,"plan":2048,"balPct":87.1,"drops":1,"uptime":98.7,"lastDisc":7829,"incidents":[],"events":[{"id":"EVT-23-000","code":"TAU","occurred_at":"2026-02-27T01:52:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":476484,"pdptx":86709}],"imei":"35684900002361","pdpAttempts":30,"pdpSuccess":29,"locUpdates":106,"locSuccess":103,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":179819686,"ulBytes":97004377,"country":"Portugal"},{"id":"b18","nm":"Demo - 24","lat":38.9980164,"lon":-0.557465672,"spd":0,"drv":false,"comm":true,"imsi":"214010000000024","sig":103,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":204,"plan":2048,"balPct":90.0,"drops":1,"uptime":98.8,"lastDisc":9158,"incidents":[],"events":[{"id":"EVT-24-000","code":"SERVICE_REQUEST","occurred_at":"2026-02-27T00:34:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":451593,"pdptx":178212}],"imei":"35684900002418","pdpAttempts":20,"pdpSuccess":20,"locUpdates":120,"locSuccess":119,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":128653340,"ulBytes":85256163,"country":"Portugal"},{"id":"b19","nm":"Demo - 25","lat":41.5282936,"lon":0.516377628,"spd":0,"drv":false,"comm":true,"imsi":"214010000000025","sig":86,"tier":"healthy","rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"354","cell":"12245","used":120,"plan":2048,"balPct":94.1,"drops":1,"uptime":98.5,"lastDisc":6384,"incidents":[],"events":[{"id":"EVT-25-000","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T05:59:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"03","lac":"354","cell_id":"12245","pdprx":259888,"pdptx":67556}],"imei":"35684900002590","pdpAttempts":11,"pdpSuccess":11,"locUpdates":58,"locSuccess":58,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":77280655,"ulBytes":48548464,"country":"Portugal"},{"id":"b1A","nm":"Demo - 26","lat":41.8975487,"lon":-8.857728,"spd":0,"drv":false,"comm":true,"imsi":"214010000000026","sig":104,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":180,"plan":2048,"balPct":91.2,"drops":1,"uptime":98.2,"lastDisc":7740,"incidents":[],"events":[{"id":"EVT-26-000","code":"HANDOVER","occurred_at":"2026-02-27T04:02:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":249698,"pdptx":63504}],"imei":"35684900002640","pdpAttempts":18,"pdpSuccess":16,"locUpdates":112,"locSuccess":111,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":140551853,"ulBytes":48191826,"country":"Spain"},{"id":"b1B","nm":"Demo - 27","lat":41.897522,"lon":-8.85775375,"spd":0,"drv":false,"comm":true,"imsi":"214010000000027","sig":84,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":264,"plan":2048,"balPct":87.1,"drops":1,"uptime":98.9,"lastDisc":8035,"incidents":[],"events":[{"id":"EVT-27-000","code":"DETACH","occurred_at":"2026-02-26T23:02:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":101450,"pdptx":123340}],"imei":"35684900002783","pdpAttempts":28,"pdpSuccess":27,"locUpdates":81,"locSuccess":78,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":176636447,"ulBytes":100187616,"country":"Spain"},{"id":"b1C","nm":"Demo - 28","lat":41.897522,"lon":-8.85767651,"spd":0,"drv":false,"comm":true,"imsi":"214010000000028","sig":102,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":249,"plan":2048,"balPct":87.8,"drops":1,"uptime":98.8,"lastDisc":7080,"incidents":[],"events":[{"id":"EVT-28-000","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T09:31:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":246380,"pdptx":166564}],"imei":"35684900002822","pdpAttempts":23,"pdpSuccess":22,"locUpdates":104,"locSuccess":101,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":201766018,"ulBytes":59329405,"country":"Spain"},{"id":"b1D","nm":"Demo - 29","lat":42.2348557,"lon":-8.71326733,"spd":0,"drv":false,"comm":true,"imsi":"214010000000029","sig":85,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":335,"plan":2048,"balPct":83.6,"drops":0,"uptime":100.0,"lastDisc":1721,"incidents":[],"events":[{"id":"EVT-29-000","code":"HANDOVER","occurred_at":"2026-02-26T21:24:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":169697,"pdptx":2510}],"imei":"35684900002916","pdpAttempts":30,"pdpSuccess":28,"locUpdates":62,"locSuccess":62,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":261924124,"ulBytes":89348835,"country":"Spain"},{"id":"b1E","nm":"Demo - 30","lat":41.8975487,"lon":-8.857728,"spd":0,"drv":false,"comm":true,"imsi":"214010000000030","sig":99,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":308,"plan":2048,"balPct":85.0,"drops":1,"uptime":98.3,"lastDisc":6258,"incidents":[],"events":[{"id":"EVT-30-000","code":"SERVICE_REQUEST","occurred_at":"2026-02-27T15:58:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":182110,"pdptx":74777}],"imei":"35684900003023","pdpAttempts":17,"pdpSuccess":17,"locUpdates":74,"locSuccess":71,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":221027142,"ulBytes":101934265,"country":"Spain"},{"id":"b1F","nm":"Demo - 31","lat":42.1336327,"lon":-8.79843807,"spd":0,"drv":false,"comm":true,"imsi":"214010000000031","sig":37,"tier":"critical","rat":"GSM","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":1296,"plan":2048,"balPct":36.7,"drops":11,"uptime":93.3,"lastDisc":5,"incidents":[{"id":"INC-31-3G-FALLBACK","type":"3G-FALLBACK","description":"Persistent 3G/2G fallback in LTE coverage area","status":"NEW","severity":"HIGH","created":"2026-02-27T00:57:42.796916+00:00"},{"id":"INC-31-DATA-RETRY","type":"DATA-RETRY","description":"Excessive data retransmissions","status":"ASSIGNED","severity":"CRITICAL","created":"2026-02-25T21:57:42.796916+00:00"}],"events":[{"id":"EVT-31-000","code":"SERVICE_REQUEST","occurred_at":"2026-02-27T15:41:42.796916+00:00","rat_type":1,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":470228,"pdptx":104122},{"id":"EVT-31-001","code":"DETACH","occurred_at":"2026-02-27T15:29:42.796916+00:00","rat_type":1,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":319818,"pdptx":116574},{"id":"EVT-31-004","code":"ATTACH","occurred_at":"2026-02-27T14:42:42.796916+00:00","rat_type":1,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":48792,"pdptx":18102}],"imei":"35684900003145","pdpAttempts":139,"pdpSuccess":47,"locUpdates":219,"locSuccess":213,"errCount":40,"errTypes":["AUTH_FAILURE","GPRS_DETACH","NETWORK_TIMEOUT","CONTEXT_DEACTIVATION","ATTACH_REJECT"],"lastErr":"2026-02-27T15:26:00Z","dlBytes":947365535,"ulBytes":411588960,"country":"Spain"},{"id":"b20","nm":"Demo - 32","lat":42.1608696,"lon":-8.76359653,"spd":0,"drv":false,"comm":true,"imsi":"214010000000032","sig":26,"tier":"critical","rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":1277,"plan":2048,"balPct":37.6,"drops":18,"uptime":90.6,"lastDisc":73,"incidents":[{"id":"INC-32-3G-FALLBACK","type":"3G-FALLBACK","description":"Persistent 3G/2G fallback in LTE coverage area","status":"NEW","severity":"HIGH","created":"2026-02-25T12:57:42.796916+00:00"},{"id":"INC-32-SIG-LOSS","type":"SIG-LOSS","description":"Intermittent signal loss detected","status":"IN_PROGRESS","severity":"CRITICAL","created":"2026-02-27T13:57:42.796916+00:00"},{"id":"INC-32-DATA-RETRY","type":"DATA-RETRY","description":"Excessive data retransmissions","status":"ASSIGNED","severity":"CRITICAL","created":"2026-02-26T23:57:42.796916+00:00"}],"events":[{"id":"EVT-32-010","code":"HANDOVER","occurred_at":"2026-02-27T15:14:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":382839,"pdptx":133379},{"id":"EVT-32-000","code":"DETACH","occurred_at":"2026-02-27T10:07:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":251799,"pdptx":177973},{"id":"EVT-32-002","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T08:21:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":489257,"pdptx":31910}],"imei":"35684900003237","pdpAttempts":131,"pdpSuccess":68,"locUpdates":215,"locSuccess":142,"errCount":27,"errTypes":["CONTEXT_DEACTIVATION","ATTACH_REJECT","GPRS_DETACH"],"lastErr":"2026-02-27T16:27:00Z","dlBytes":989970531,"ulBytes":349061020,"country":"Spain"},{"id":"b21","nm":"Demo - 33","lat":42.1335793,"lon":-8.79833603,"spd":18,"drv":true,"comm":true,"imsi":"214010000000033","sig":29,"tier":"critical","rat":"GSM","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":971,"plan":2048,"balPct":52.6,"drops":9,"uptime":90.9,"lastDisc":27,"incidents":[{"id":"INC-33-3G-FALLBACK","type":"3G-FALLBACK","description":"Persistent 3G/2G fallback in LTE coverage area","status":"NEW","severity":"HIGH","created":"2026-02-25T17:57:42.796916+00:00"}],"events":[{"id":"EVT-33-009","code":"HANDOVER","occurred_at":"2026-02-27T13:36:42.796916+00:00","rat_type":1,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":497018,"pdptx":43506},{"id":"EVT-33-000","code":"TAU","occurred_at":"2026-02-27T12:11:42.796916+00:00","rat_type":1,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":383377,"pdptx":84080},{"id":"EVT-33-008","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T11:49:42.796916+00:00","rat_type":1,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":8024,"pdptx":85795}],"imei":"35684900003381","pdpAttempts":142,"pdpSuccess":44,"locUpdates":248,"locSuccess":175,"errCount":21,"errTypes":["NETWORK_TIMEOUT","GPRS_DETACH","AUTH_FAILURE"],"lastErr":"2026-02-27T16:03:00Z","dlBytes":621111035,"ulBytes":397056260,"country":"Spain"},{"id":"b22","nm":"Demo - 34","lat":42.1335297,"lon":-8.79813099,"spd":0,"drv":false,"comm":true,"imsi":"214010000000034","sig":41,"tier":"critical","rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":821,"plan":2048,"balPct":59.9,"drops":13,"uptime":85,"lastDisc":76,"incidents":[{"id":"INC-34-SIG-LOSS","type":"SIG-LOSS","description":"Intermittent signal loss detected","status":"IN_PROGRESS","severity":"CRITICAL","created":"2026-02-26T00:57:42.796916+00:00"},{"id":"INC-34-3G-FALLBACK","type":"3G-FALLBACK","description":"Persistent 3G/2G fallback in LTE coverage area","status":"NEW","severity":"HIGH","created":"2026-02-26T21:57:42.796916+00:00"}],"events":[{"id":"EVT-34-005","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T16:08:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":359603,"pdptx":131734},{"id":"EVT-34-004","code":"DETACH","occurred_at":"2026-02-27T15:14:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":479531,"pdptx":142042},{"id":"EVT-34-002","code":"TAU","occurred_at":"2026-02-27T13:24:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":219983,"pdptx":87771}],"imei":"35684900003471","pdpAttempts":144,"pdpSuccess":69,"locUpdates":335,"locSuccess":140,"errCount":16,"errTypes":["AUTH_FAILURE","PDP_REJECT","GPRS_DETACH","ATTACH_REJECT","CONTEXT_DEACTIVATION"],"lastErr":"2026-02-27T15:25:00Z","dlBytes":537170156,"ulBytes":323710739,"country":"Spain"},{"id":"b23","nm":"Demo - 35","lat":42.1335793,"lon":-8.79820824,"spd":0,"drv":false,"comm":true,"imsi":"214010000000035","sig":32,"tier":"critical","rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":978,"plan":2048,"balPct":52.2,"drops":17,"uptime":85,"lastDisc":9,"incidents":[{"id":"INC-35-SIG-LOSS","type":"SIG-LOSS","description":"Intermittent signal loss detected","status":"IN_PROGRESS","severity":"CRITICAL","created":"2026-02-25T11:57:42.796916+00:00"},{"id":"INC-35-DATA-RETRY","type":"DATA-RETRY","description":"Excessive data retransmissions","status":"ASSIGNED","severity":"CRITICAL","created":"2026-02-26T14:57:42.796916+00:00"}],"events":[{"id":"EVT-35-011","code":"TAU","occurred_at":"2026-02-27T15:36:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":126038,"pdptx":43724},{"id":"EVT-35-008","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T15:34:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":394445,"pdptx":79271},{"id":"EVT-35-000","code":"ATTACH","occurred_at":"2026-02-27T14:26:42.796916+00:00","rat_type":2,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":432169,"pdptx":186005}],"imei":"35684900003582","pdpAttempts":111,"pdpSuccess":58,"locUpdates":352,"locSuccess":110,"errCount":34,"errTypes":["CONTEXT_DEACTIVATION","NETWORK_TIMEOUT","ATTACH_REJECT"],"lastErr":"2026-02-27T16:13:00Z","dlBytes":752666175,"ulBytes":272841152,"country":"Spain"},{"id":"b24","nm":"Demo - 36","lat":39.4852333,"lon":-0.534604907,"spd":0,"drv":false,"comm":true,"imsi":"214010000000036","sig":63,"tier":"warning","rat":"WCDMA","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":599,"plan":2048,"balPct":70.8,"drops":4,"uptime":96.2,"lastDisc":475,"incidents":[],"events":[{"id":"EVT-36-005","code":"ATTACH","occurred_at":"2026-02-27T10:00:42.796916+00:00","rat_type":2,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":158378,"pdptx":59051},{"id":"EVT-36-003","code":"HANDOVER","occurred_at":"2026-02-27T09:48:42.796916+00:00","rat_type":2,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":263981,"pdptx":167957},{"id":"EVT-36-001","code":"HANDOVER","occurred_at":"2026-02-27T07:28:42.796916+00:00","rat_type":2,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":322030,"pdptx":51285}],"imei":"35684900003650","pdpAttempts":65,"pdpSuccess":51,"locUpdates":251,"locSuccess":143,"errCount":15,"errTypes":["GPRS_DETACH","CONTEXT_DEACTIVATION","PDP_REJECT"],"lastErr":"2026-02-27T10:29:00Z","dlBytes":454887870,"ulBytes":173209153,"country":"Portugal"},{"id":"b25","nm":"Demo - 37","lat":39.4852333,"lon":-0.534604907,"spd":0,"drv":false,"comm":true,"imsi":"214010000000037","sig":65,"tier":"warning","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":485,"plan":2048,"balPct":76.3,"drops":7,"uptime":90.8,"lastDisc":445,"incidents":[],"events":[{"id":"EVT-37-004","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T16:30:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":459897,"pdptx":148198},{"id":"EVT-37-005","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T12:03:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":456805,"pdptx":96363},{"id":"EVT-37-002","code":"SERVICE_REQUEST","occurred_at":"2026-02-27T08:18:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":372331,"pdptx":18779}],"imei":"35684900003782","pdpAttempts":56,"pdpSuccess":39,"locUpdates":287,"locSuccess":164,"errCount":13,"errTypes":["CONTEXT_DEACTIVATION","GPRS_DETACH","PDP_REJECT"],"lastErr":"2026-02-27T11:23:00Z","dlBytes":334122217,"ulBytes":174437142,"country":"Portugal"},{"id":"b26","nm":"Demo - 38","lat":39.485363,"lon":-0.535244882,"spd":0,"drv":false,"comm":true,"imsi":"214010000000038","sig":67,"tier":"warning","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":786,"plan":2048,"balPct":61.6,"drops":3,"uptime":96.6,"lastDisc":122,"incidents":[{"id":"INC-38-PERF","type":"PERF-DEGRADE","description":"Network performance degradation observed","status":"NEW","severity":"MEDIUM","created":"2026-02-27T03:57:42.796916+00:00"}],"events":[{"id":"EVT-38-004","code":"ATTACH","occurred_at":"2026-02-27T14:14:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":411087,"pdptx":190462},{"id":"EVT-38-002","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T12:45:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":468442,"pdptx":108674},{"id":"EVT-38-005","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T10:37:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":379421,"pdptx":129230}],"imei":"35684900003866","pdpAttempts":84,"pdpSuccess":54,"locUpdates":285,"locSuccess":112,"errCount":15,"errTypes":["PDP_REJECT","GPRS_DETACH","CONTEXT_DEACTIVATION"],"lastErr":"2026-02-27T10:56:00Z","dlBytes":512151839,"ulBytes":312028896,"country":"Portugal"},{"id":"b27","nm":"Demo - 39","lat":38.6321678,"lon":-3.46613765,"spd":0,"drv":false,"comm":true,"imsi":"214010000000039","sig":66,"tier":"warning","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":425,"plan":2048,"balPct":79.2,"drops":3,"uptime":95.4,"lastDisc":414,"incidents":[{"id":"INC-39-PERF","type":"PERF-DEGRADE","description":"Network performance degradation observed","status":"ASSIGNED","severity":"MEDIUM","created":"2026-02-27T07:57:42.796916+00:00"}],"events":[{"id":"EVT-39-000","code":"HANDOVER","occurred_at":"2026-02-27T14:44:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":422610,"pdptx":83297},{"id":"EVT-39-003","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T07:01:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":155703,"pdptx":37450},{"id":"EVT-39-002","code":"TAU","occurred_at":"2026-02-27T05:29:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":384625,"pdptx":109657}],"imei":"35684900003980","pdpAttempts":59,"pdpSuccess":52,"locUpdates":222,"locSuccess":163,"errCount":10,"errTypes":["NETWORK_TIMEOUT","GPRS_DETACH"],"lastErr":"2026-02-27T13:16:00Z","dlBytes":348078579,"ulBytes":97566220,"country":"Portugal"},{"id":"b28","nm":"Demo - 40","lat":39.4852333,"lon":-0.534604907,"spd":0,"drv":false,"comm":true,"imsi":"214010000000040","sig":60,"tier":"warning","rat":"WCDMA","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":766,"plan":2048,"balPct":62.6,"drops":5,"uptime":92.8,"lastDisc":357,"incidents":[{"id":"INC-40-PERF","type":"PERF-DEGRADE","description":"Network performance degradation observed","status":"NEW","severity":"MEDIUM","created":"2026-02-26T17:57:42.796916+00:00"}],"events":[{"id":"EVT-40-000","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T11:08:42.796916+00:00","rat_type":2,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":373667,"pdptx":24934},{"id":"EVT-40-002","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T06:20:42.796916+00:00","rat_type":2,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":106935,"pdptx":70046},{"id":"EVT-40-003","code":"DETACH","occurred_at":"2026-02-27T04:08:42.796916+00:00","rat_type":2,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":157529,"pdptx":83153}],"imei":"35684900004016","pdpAttempts":55,"pdpSuccess":62,"locUpdates":220,"locSuccess":121,"errCount":5,"errTypes":["CONTEXT_DEACTIVATION","NETWORK_TIMEOUT","GPRS_DETACH"],"lastErr":"2026-02-27T11:47:00Z","dlBytes":552902800,"ulBytes":250306415,"country":"Portugal"},{"id":"b29","nm":"Demo - 41","lat":41.8974724,"lon":-8.85770226,"spd":0,"drv":false,"comm":true,"imsi":"214010000000041","sig":103,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":119,"plan":2048,"balPct":94.2,"drops":0,"uptime":100.0,"lastDisc":5728,"incidents":[],"events":[{"id":"EVT-41-000","code":"HANDOVER","occurred_at":"2026-02-27T13:39:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":474625,"pdptx":15941}],"imei":"35684900004164","pdpAttempts":27,"pdpSuccess":27,"locUpdates":64,"locSuccess":64,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":88484137,"ulBytes":36296406,"country":"Spain"},{"id":"b2A","nm":"Demo - 42","lat":41.8974724,"lon":-8.85770226,"spd":0,"drv":false,"comm":true,"imsi":"214010000000042","sig":82,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":299,"plan":2048,"balPct":85.4,"drops":1,"uptime":99.4,"lastDisc":6194,"incidents":[],"events":[{"id":"EVT-42-000","code":"HANDOVER","occurred_at":"2026-02-26T19:01:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":176780,"pdptx":86361}],"imei":"35684900004257","pdpAttempts":28,"pdpSuccess":26,"locUpdates":68,"locSuccess":65,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":190737406,"ulBytes":122786817,"country":"Spain"},{"id":"b2B","nm":"Demo - 43","lat":42.2350349,"lon":-8.71349716,"spd":20,"drv":true,"comm":true,"imsi":"214010000000043","sig":94,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","used":281,"plan":2048,"balPct":86.3,"drops":0,"uptime":100.0,"lastDisc":7476,"incidents":[],"events":[{"id":"EVT-43-000","code":"HANDOVER","occurred_at":"2026-02-27T13:37:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"803","cell_id":"64084","pdprx":439873,"pdptx":121611}],"imei":"35684900004356","pdpAttempts":11,"pdpSuccess":10,"locUpdates":76,"locSuccess":75,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":197632185,"ulBytes":97017670,"country":"Spain"},{"id":"b2C","nm":"Demo - 44","lat":41.9005966,"lon":-8.8625412,"spd":0,"drv":false,"comm":true,"imsi":"214010000000044","sig":105,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":231,"plan":2048,"balPct":88.7,"drops":1,"uptime":98.2,"lastDisc":4074,"incidents":[],"events":[{"id":"EVT-44-000","code":"PDP_DEACTIVATE","occurred_at":"2026-02-26T21:30:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":308514,"pdptx":158935}],"imei":"35684900004481","pdpAttempts":23,"pdpSuccess":21,"locUpdates":69,"locSuccess":68,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":192624164,"ulBytes":49596891,"country":"Spain"},{"id":"b2D","nm":"Demo - 45","lat":41.9296761,"lon":-8.83712006,"spd":0,"drv":false,"comm":true,"imsi":"214010000000045","sig":102,"tier":"healthy","rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","used":312,"plan":2048,"balPct":84.8,"drops":0,"uptime":100.0,"lastDisc":1630,"incidents":[],"events":[{"id":"EVT-45-000","code":"PDP_DEACTIVATE","occurred_at":"2026-02-27T11:49:42.796916+00:00","rat_type":4,"mcc":"214","mnc":"03","lac":"103","cell_id":"49885","pdprx":379529,"pdptx":108642}],"imei":"35684900004532","pdpAttempts":23,"pdpSuccess":23,"locUpdates":72,"locSuccess":70,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":248784588,"ulBytes":78371123,"country":"Spain"},{"id":"b2E","nm":"Demo - 46","lat":39.4852867,"lon":-0.535372913,"spd":0,"drv":false,"comm":true,"imsi":"214010000000046","sig":77,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":193,"plan":2048,"balPct":90.6,"drops":1,"uptime":99.4,"lastDisc":5396,"incidents":[],"events":[{"id":"EVT-46-000","code":"PDP_ACTIVATE","occurred_at":"2026-02-27T05:51:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":53966,"pdptx":64885}],"imei":"35684900004641","pdpAttempts":18,"pdpSuccess":18,"locUpdates":63,"locSuccess":60,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":156176691,"ulBytes":46198476,"country":"Portugal"},{"id":"b2F","nm":"Demo - 47","lat":39.4852867,"lon":-0.535372913,"spd":0,"drv":false,"comm":true,"imsi":"214010000000047","sig":101,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":106,"plan":2048,"balPct":94.8,"drops":1,"uptime":98.8,"lastDisc":9900,"incidents":[],"events":[{"id":"EVT-47-000","code":"ATTACH","occurred_at":"2026-02-27T01:35:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":459016,"pdptx":105955}],"imei":"35684900004738","pdpAttempts":16,"pdpSuccess":15,"locUpdates":94,"locSuccess":92,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":71644981,"ulBytes":39504074,"country":"Portugal"},{"id":"b30","nm":"Demo - 48","lat":40.1711884,"lon":-0.861721694,"spd":90,"drv":true,"comm":true,"imsi":"214010000000048","sig":83,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":253,"plan":2048,"balPct":87.6,"drops":0,"uptime":100.0,"lastDisc":5791,"incidents":[],"events":[{"id":"EVT-48-000","code":"SERVICE_REQUEST","occurred_at":"2026-02-27T11:25:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":425709,"pdptx":102800}],"imei":"35684900004894","pdpAttempts":16,"pdpSuccess":15,"locUpdates":92,"locSuccess":90,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":210474986,"ulBytes":54814741,"country":"Portugal"},{"id":"b31","nm":"Demo - 49","lat":41.7350159,"lon":-1.20483851,"spd":0,"drv":false,"comm":true,"imsi":"214010000000049","sig":102,"tier":"healthy","rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"354","cell":"12245","used":112,"plan":2048,"balPct":94.5,"drops":0,"uptime":100.0,"lastDisc":2168,"incidents":[],"events":[{"id":"EVT-49-000","code":"TAU","occurred_at":"2026-02-27T09:21:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"03","lac":"354","cell_id":"12245","pdprx":224947,"pdptx":57996}],"imei":"35684900004945","pdpAttempts":21,"pdpSuccess":19,"locUpdates":115,"locSuccess":112,"errCount":1,"errTypes":["CONTEXT_DEACTIVATION"],"lastErr":null,"dlBytes":92525205,"ulBytes":24915306,"country":"Portugal"},{"id":"b32","nm":"Demo - 50","lat":39.4860535,"lon":-0.535065711,"spd":0,"drv":false,"comm":true,"imsi":"214010000000050","sig":88,"tier":"healthy","rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","used":240,"plan":2048,"balPct":88.3,"drops":1,"uptime":99.1,"lastDisc":7392,"incidents":[],"events":[{"id":"EVT-50-000","code":"ATTACH","occurred_at":"2026-02-27T14:51:42.796916+00:00","rat_type":4,"mcc":"268","mnc":"01","lac":"954","cell_id":"49145","pdprx":287254,"pdptx":172248}],"imei":"35684900005024","pdpAttempts":18,"pdpSuccess":18,"locUpdates":83,"locSuccess":83,"errCount":0,"errTypes":[],"lastErr":null,"dlBytes":181021358,"ulBytes":70636881,"country":"Portugal"}],"t":[{"lat":42.26061,"lon":-7.02943,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"889","cell":"57637","weak":false},{"lat":43.15629,"lon":-8.3701,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"496","cell":"25821","weak":false},{"lat":42.55248,"lon":-8.92166,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"703","cell":"56754","weak":false},{"lat":41.39639,"lon":-7.28286,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"763","cell":"45929","weak":false},{"lat":41.2236,"lon":-7.83968,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"367","cell":"22415","weak":false},{"lat":43.2598,"lon":-6.70546,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"670","cell":"33780","weak":false},{"lat":41.08695,"lon":-7.81005,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"886","cell":"49803","weak":false},{"lat":42.19284,"lon":-7.98905,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"238","cell":"26325","weak":false},{"lat":43.28348,"lon":-8.61793,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"343","cell":"36769","weak":false},{"lat":41.91328,"lon":-8.33765,"rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"259","cell":"12985","weak":false},{"lat":42.28885,"lon":-7.94663,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"752","cell":"12905","weak":false},{"lat":42.80215,"lon":-8.73107,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"549","cell":"12500","weak":false},{"lat":41.94711,"lon":-6.85207,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"419","cell":"26358","weak":false},{"lat":41.96372,"lon":-7.49466,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"958","cell":"47482","weak":false},{"lat":41.01468,"lon":-8.33603,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"320","cell":"63813","weak":false},{"lat":41.99617,"lon":-8.81064,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"131","cell":"47723","weak":false},{"lat":42.78703,"lon":-8.04305,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"730","cell":"44673","weak":false},{"lat":42.98279,"lon":-7.04463,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"367","cell":"26890","weak":false},{"lat":41.47646,"lon":-8.43754,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"211","cell":"18610","weak":false},{"lat":43.05947,"lon":-6.84017,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"285","cell":"58116","weak":false},{"lat":42.51547,"lon":-7.98678,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"697","cell":"33232","weak":false},{"lat":43.13264,"lon":-7.94252,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"152","cell":"49674","weak":false},{"lat":41.99238,"lon":-7.71073,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"500","cell":"16047","weak":false},{"lat":41.12571,"lon":-7.52307,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"591","cell":"35771","weak":false},{"lat":42.90434,"lon":-7.45059,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"725","cell":"40532","weak":false},{"lat":43.43997,"lon":-7.09702,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"255","cell":"22972","weak":false},{"lat":41.15526,"lon":-6.83499,"rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"324","cell":"22249","weak":false},{"lat":41.57577,"lon":-8.74056,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"239","cell":"54927","weak":false},{"lat":42.08291,"lon":-8.43073,"rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"956","cell":"17163","weak":false},{"lat":43.26011,"lon":-9.0211,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"854","cell":"43475","weak":false},{"lat":42.76225,"lon":-8.64493,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"131","cell":"48229","weak":false},{"lat":43.38055,"lon":-7.93105,"rat":"WCDMA","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"886","cell":"12827","weak":false},{"lat":41.07273,"lon":-7.74835,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"339","cell":"60723","weak":false},{"lat":41.99268,"lon":-7.08005,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"805","cell":"61375","weak":false},{"lat":42.74137,"lon":-7.24402,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"346","cell":"22323","weak":false},{"lat":41.39328,"lon":-8.39914,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"142","cell":"20107","weak":false},{"lat":42.01108,"lon":-7.94321,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"132","cell":"30983","weak":false},{"lat":41.58925,"lon":-7.23183,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"219","cell":"17747","weak":false},{"lat":41.82441,"lon":-7.18361,"rat":"WCDMA","carrier":"Movistar","mcc":"214","mnc":"07","lac":"909","cell":"24362","weak":false},{"lat":41.54719,"lon":-6.58947,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"354","cell":"12245","weak":false},{"lat":42.28002,"lon":-7.6333,"rat":"GSM","carrier":"Movistar","mcc":"214","mnc":"07","lac":"786","cell":"14130","weak":false},{"lat":42.10845,"lon":-7.32718,"rat":"WCDMA","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"458","cell":"23571","weak":false},{"lat":41.96791,"lon":-7.22496,"rat":"GSM","carrier":"Movistar","mcc":"214","mnc":"07","lac":"676","cell":"38391","weak":false},{"lat":42.81194,"lon":-6.79558,"rat":"WCDMA","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"894","cell":"64585","weak":false},{"lat":41.55348,"lon":-8.77815,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"419","cell":"47186","weak":false},{"lat":41.50998,"lon":-6.59644,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"509","cell":"14072","weak":false},{"lat":41.83588,"lon":-7.72498,"rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"699","cell":"46498","weak":false},{"lat":43.4437,"lon":-9.38992,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"451","cell":"26140","weak":false},{"lat":42.2207,"lon":-8.84399,"rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"803","cell":"64084","weak":false},{"lat":41.0609,"lon":-7.11828,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"244","cell":"44480","weak":false},{"lat":41.13694,"lon":-6.83279,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"954","cell":"49145","weak":false},{"lat":41.91114,"lon":-8.85956,"rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"103","cell":"49885","weak":false},{"lat":43.15994,"lon":-7.34459,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"832","cell":"57215","weak":false},{"lat":41.73108,"lon":-8.92804,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"512","cell":"20659","weak":false},{"lat":42.6034,"lon":-7.28101,"rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"839","cell":"61268","weak":false},{"lat":42.68072,"lon":-9.1852,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"947","cell":"11497","weak":false},{"lat":41.61204,"lon":-9.26515,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"182","cell":"63280","weak":false},{"lat":41.32337,"lon":-8.41349,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"194","cell":"62958","weak":false},{"lat":42.14108,"lon":-8.45748,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"234","cell":"18145","weak":false},{"lat":41.95313,"lon":-8.79207,"rat":"WCDMA","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"365","cell":"40155","weak":false},{"lat":42.08,"lon":-7.87796,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"627","cell":"54285","weak":false},{"lat":43.12579,"lon":-7.69897,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"474","cell":"50161","weak":false},{"lat":42.68104,"lon":-9.15877,"rat":"WCDMA","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"617","cell":"57540","weak":false},{"lat":42.09244,"lon":-8.2662,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"833","cell":"33593","weak":false},{"lat":43.18628,"lon":-7.67793,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"555","cell":"54827","weak":false},{"lat":42.94732,"lon":-8.6202,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"135","cell":"27368","weak":false},{"lat":41.10392,"lon":-7.44704,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"856","cell":"12988","weak":false},{"lat":42.82825,"lon":-8.38829,"rat":"LTE","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"156","cell":"55136","weak":false},{"lat":43.19979,"lon":-8.82165,"rat":"LTE","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"149","cell":"60509","weak":false},{"lat":41.82583,"lon":-7.64109,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"455","cell":"27027","weak":false},{"lat":42.05734,"lon":-6.95949,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"311","cell":"64577","weak":false},{"lat":42.74274,"lon":-8.80348,"rat":"WCDMA","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"187","cell":"61393","weak":false},{"lat":43.23602,"lon":-7.6834,"rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"795","cell":"28518","weak":false},{"lat":41.80889,"lon":-8.76189,"rat":"WCDMA","carrier":"Vodafone PT","mcc":"268","mnc":"01","lac":"574","cell":"20554","weak":false},{"lat":41.44559,"lon":-6.7133,"rat":"LTE","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"297","cell":"32781","weak":false},{"lat":41.78691,"lon":-6.84604,"rat":"WCDMA","carrier":"Movistar","mcc":"214","mnc":"07","lac":"702","cell":"47640","weak":false},{"lat":41.78544,"lon":-8.28279,"rat":"WCDMA","carrier":"NOS PT","mcc":"268","mnc":"03","lac":"732","cell":"62586","weak":false},{"lat":43.47684,"lon":-9.46684,"rat":"LTE","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"247","cell":"61897","weak":false},{"lat":43.16971,"lon":-7.32142,"rat":"LTE","carrier":"Movistar","mcc":"214","mnc":"07","lac":"329","cell":"28130","weak":false},{"lat":42.96803,"lon":-7.53581,"rat":"GSM","carrier":"Movistar","mcc":"214","mnc":"07","lac":"308","cell":"12099","weak":false},{"lat":42.12314,"lon":-7.71413,"rat":"GSM","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"935","cell":"29738","weak":true},{"lat":41.86512,"lon":-8.20977,"rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"391","cell":"39716","weak":true},{"lat":41.51538,"lon":-7.63044,"rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"738","cell":"54948","weak":true},{"lat":42.3622,"lon":-8.42696,"rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"110","cell":"48906","weak":true},{"lat":41.78237,"lon":-7.6366,"rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"631","cell":"47777","weak":true},{"lat":41.60788,"lon":-7.53955,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"900","cell":"61422","weak":true},{"lat":42.36219,"lon":-8.07322,"rat":"GSM","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"148","cell":"29067","weak":true},{"lat":42.20038,"lon":-7.81869,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"221","cell":"25416","weak":true},{"lat":41.68316,"lon":-8.25311,"rat":"GSM","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"562","cell":"39460","weak":true},{"lat":42.06486,"lon":-8.01969,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"343","cell":"47860","weak":true},{"lat":41.59119,"lon":-7.60695,"rat":"GSM","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"474","cell":"24233","weak":true},{"lat":41.91981,"lon":-7.84543,"rat":"GSM","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"300","cell":"51387","weak":true},{"lat":41.82374,"lon":-8.28665,"rat":"WCDMA","carrier":"Vodafone ES","mcc":"214","mnc":"01","lac":"135","cell":"25444","weak":true},{"lat":42.2542,"lon":-8.25599,"rat":"WCDMA","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"841","cell":"62335","weak":true},{"lat":41.59015,"lon":-8.2608,"rat":"GSM","carrier":"Orange ES","mcc":"214","mnc":"03","lac":"911","cell":"60554","weak":true}],"errors":[{"ts":"2026-02-27T16:27:00Z","vehicle":"Demo - 32","imsi":"214010000000032","imei":"35684900003237","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:27:00Z","vehicle":"Demo - 32","imsi":"214010000000032","imei":"35684900003237","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"ATTACH_REJECT","errDesc":"Network attach request rejected \u2014 IMSI not provisioned for this PLMN","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:27:00Z","vehicle":"Demo - 32","imsi":"214010000000032","imei":"35684900003237","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:13:00Z","vehicle":"Demo - 35","imsi":"214010000000035","imei":"35684900003582","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:13:00Z","vehicle":"Demo - 35","imsi":"214010000000035","imei":"35684900003582","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:13:00Z","vehicle":"Demo - 35","imsi":"214010000000035","imei":"35684900003582","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"ATTACH_REJECT","errDesc":"Network attach request rejected \u2014 IMSI not provisioned for this PLMN","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:03:00Z","vehicle":"Demo - 33","imsi":"214010000000033","imei":"35684900003381","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:03:00Z","vehicle":"Demo - 33","imsi":"214010000000033","imei":"35684900003381","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T16:03:00Z","vehicle":"Demo - 33","imsi":"214010000000033","imei":"35684900003381","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"AUTH_FAILURE","errDesc":"SIM authentication rejected by visited network \u2014 possible roaming agreement issue","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:26:00Z","vehicle":"Demo - 31","imsi":"214010000000031","imei":"35684900003145","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"AUTH_FAILURE","errDesc":"SIM authentication rejected by visited network \u2014 possible roaming agreement issue","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:26:00Z","vehicle":"Demo - 31","imsi":"214010000000031","imei":"35684900003145","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:26:00Z","vehicle":"Demo - 31","imsi":"214010000000031","imei":"35684900003145","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:26:00Z","vehicle":"Demo - 31","imsi":"214010000000031","imei":"35684900003145","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:26:00Z","vehicle":"Demo - 31","imsi":"214010000000031","imei":"35684900003145","carrier":"Orange ES","country":"Spain","rat":"GSM","errCode":"ATTACH_REJECT","errDesc":"Network attach request rejected \u2014 IMSI not provisioned for this PLMN","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:25:00Z","vehicle":"Demo - 34","imsi":"214010000000034","imei":"35684900003471","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"AUTH_FAILURE","errDesc":"SIM authentication rejected by visited network \u2014 possible roaming agreement issue","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:25:00Z","vehicle":"Demo - 34","imsi":"214010000000034","imei":"35684900003471","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"PDP_REJECT","errDesc":"Packet data session activation denied by GGSN \u2014 APN config or quota exceeded","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:25:00Z","vehicle":"Demo - 34","imsi":"214010000000034","imei":"35684900003471","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:25:00Z","vehicle":"Demo - 34","imsi":"214010000000034","imei":"35684900003471","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"ATTACH_REJECT","errDesc":"Network attach request rejected \u2014 IMSI not provisioned for this PLMN","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T15:25:00Z","vehicle":"Demo - 34","imsi":"214010000000034","imei":"35684900003471","carrier":"Orange ES","country":"Spain","rat":"WCDMA","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"214-03-803-64084","tier":"critical"},{"ts":"2026-02-27T14:02:00Z","vehicle":"Demo - 11","imsi":"214010000000011","imei":"35684900001144","carrier":"Orange ES","country":"Spain","rat":"LTE","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"214-03-103-49885","tier":"minor"},{"ts":"2026-02-27T14:02:00Z","vehicle":"Demo - 11","imsi":"214010000000011","imei":"35684900001144","carrier":"Orange ES","country":"Spain","rat":"LTE","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"214-03-103-49885","tier":"minor"},{"ts":"2026-02-27T13:46:00Z","vehicle":"Demo - 15","imsi":"214010000000015","imei":"35684900001564","carrier":"Orange ES","country":"Spain","rat":"LTE","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"214-03-803-64084","tier":"minor"},{"ts":"2026-02-27T13:46:00Z","vehicle":"Demo - 15","imsi":"214010000000015","imei":"35684900001564","carrier":"Orange ES","country":"Spain","rat":"LTE","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"214-03-803-64084","tier":"minor"},{"ts":"2026-02-27T13:16:00Z","vehicle":"Demo - 39","imsi":"214010000000039","imei":"35684900003980","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T13:16:00Z","vehicle":"Demo - 39","imsi":"214010000000039","imei":"35684900003980","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T13:10:00Z","vehicle":"Demo - 14","imsi":"214010000000014","imei":"35684900001427","carrier":"Orange ES","country":"Spain","rat":"LTE","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"214-03-103-49885","tier":"minor"},{"ts":"2026-02-27T11:56:00Z","vehicle":"Demo - 12","imsi":"214010000000012","imei":"35684900001261","carrier":"Orange ES","country":"Spain","rat":"LTE","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"214-03-103-49885","tier":"minor"},{"ts":"2026-02-27T11:47:00Z","vehicle":"Demo - 40","imsi":"214010000000040","imei":"35684900004016","carrier":"Vodafone PT","country":"Portugal","rat":"WCDMA","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T11:47:00Z","vehicle":"Demo - 40","imsi":"214010000000040","imei":"35684900004016","carrier":"Vodafone PT","country":"Portugal","rat":"WCDMA","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T11:47:00Z","vehicle":"Demo - 40","imsi":"214010000000040","imei":"35684900004016","carrier":"Vodafone PT","country":"Portugal","rat":"WCDMA","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T11:23:00Z","vehicle":"Demo - 37","imsi":"214010000000037","imei":"35684900003782","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T11:23:00Z","vehicle":"Demo - 37","imsi":"214010000000037","imei":"35684900003782","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T11:23:00Z","vehicle":"Demo - 37","imsi":"214010000000037","imei":"35684900003782","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"PDP_REJECT","errDesc":"Packet data session activation denied by GGSN \u2014 APN config or quota exceeded","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T10:56:00Z","vehicle":"Demo - 38","imsi":"214010000000038","imei":"35684900003866","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"PDP_REJECT","errDesc":"Packet data session activation denied by GGSN \u2014 APN config or quota exceeded","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T10:56:00Z","vehicle":"Demo - 38","imsi":"214010000000038","imei":"35684900003866","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T10:56:00Z","vehicle":"Demo - 38","imsi":"214010000000038","imei":"35684900003866","carrier":"Vodafone PT","country":"Portugal","rat":"LTE","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T10:29:00Z","vehicle":"Demo - 36","imsi":"214010000000036","imei":"35684900003650","carrier":"Vodafone PT","country":"Portugal","rat":"WCDMA","errCode":"GPRS_DETACH","errDesc":"Network-initiated GPRS detach \u2014 SIM deregistered from packet domain","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T10:29:00Z","vehicle":"Demo - 36","imsi":"214010000000036","imei":"35684900003650","carrier":"Vodafone PT","country":"Portugal","rat":"WCDMA","errCode":"CONTEXT_DEACTIVATION","errDesc":"Data session torn down by network \u2014 congestion or admin action","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T10:29:00Z","vehicle":"Demo - 36","imsi":"214010000000036","imei":"35684900003650","carrier":"Vodafone PT","country":"Portugal","rat":"WCDMA","errCode":"PDP_REJECT","errDesc":"Packet data session activation denied by GGSN \u2014 APN config or quota exceeded","cell":"268-01-954-49145","tier":"warning"},{"ts":"2026-02-27T10:14:00Z","vehicle":"Demo - 13","imsi":"214010000000013","imei":"35684900001368","carrier":"Orange ES","country":"Spain","rat":"LTE","errCode":"NETWORK_TIMEOUT","errDesc":"No response from SGSN/MME within timeout window \u2014 signalling path failure","cell":"214-03-803-64084","tier":"minor"}]};
+
+let coverageMap = null, fleetMap = null;
+
+var _fciInitialized = false;
+function initDashboard() {
+  if(_fciInitialized) return;
+  _fciInitialized = true;
+  updateTimestamp();
+  renderKPIs(MOCK.v);
+  renderTabs(MOCK.v);
+  renderAlerts(MOCK.v);
+  renderCoverageMap(MOCK.v, MOCK.t);
+  renderFleetMap(MOCK.v, MOCK.t);
+  renderDataUsage(MOCK.v);
+  renderDiagnostics(MOCK.v, MOCK.errors);
+  renderErrors(MOCK.v, MOCK.errors);
+  setInterval(updateTimestamp, 1000);
+}
+
+function updateTimestamp() {
+  var now = new Date();
+  document.getElementById('fci-time').innerHTML = '<span class="fci-pulse"></span>' + now.toLocaleTimeString('en-US',{hour12:false}) + ' UTC';
+}
+
+function sigColor(s) { return s>85?'#2B6436':s>70?'#46AF55':s>55?'#B8860B':s>40?'#D97706':'#C51A11'; }
+function tierColor(t) { return {critical:'#C51A11',warning:'#B8860B',minor:'#0078D3',healthy:'#2B6436'}[t]||'#4E677E'; }
+function ratColor(r) { return {LTE:'#6C3FC0',WCDMA:'#B8860B',GSM:'#C51A11'}[r]||'#4E677E'; }
+
+function renderKPIs(V) {
+  var cr=0,wr=0,lte=0,sigSum=0,totInc=0,totErr=0;
+  for(var i=0;i<V.length;i++){if(V[i].tier==='critical')cr++;if(V[i].tier==='warning')wr++;if(V[i].rat==='LTE')lte++;sigSum+=V[i].sig;totInc+=V[i].incidents.length;totErr+=V[i].errCount;}
+  var avgSig=Math.round(sigSum/V.length);
+  var kpis=[
+    {val:cr+' / '+wr,label:'Critical / Warning',color:cr>0?'#F7A1A2':'#90EE90'},
+    {val:totInc,label:'Open Incidents',color:totInc>0?'#F7A1A2':'#90EE90'},
+    {val:totErr,label:'Network Errors',color:totErr>0?'#F7A1A2':'#90EE90'},
+    {val:Math.round(lte/V.length*100)+'%',label:'LTE Coverage'},
+    {val:avgSig+' dBm',label:'Avg Signal'},
+    {val:V.length,label:'Fleet Vehicles'}
+  ];
+  var h='';for(var i=0;i<kpis.length;i++){var k=kpis[i];h+='<div class="fci-kpi"><div class="fci-kpi-val"'+(k.color?' style="color:'+k.color+'"':'')+'>'+k.val+'</div><div class="fci-kpi-label">'+k.label+'</div></div>';}
+  document.getElementById('fci-kpis').innerHTML=h;
+}
+
+function renderTabs(V) {
+  var ac=0,ec=0;for(var i=0;i<V.length;i++){if(V[i].tier!=='healthy')ac++;ec+=V[i].errCount;}
+  var tabs=[
+    {id:'alerts',label:'Problem Alerts',badge:ac,bc:''},
+    {id:'coverage',label:'Coverage Map',badge:0},
+    {id:'fleet',label:'Fleet Map',badge:0},
+    {id:'data',label:'Data Usage',badge:0},
+    {id:'diag',label:'Network Diagnostics',badge:0},
+    {id:'errors',label:'Errors & Export',badge:ec,bc:' err'}
+  ];
+  var h='';for(var i=0;i<tabs.length;i++){var t=tabs[i];h+='<button class="fci-tab'+(i===0?' active':'')+'" onclick="switchTab(\''+t.id+'\',this)">'+t.label+(t.badge?'<span class="fci-tab-badge'+(t.bc||'')+'">'+t.badge+'</span>':'')+'</button>';}
+  document.getElementById('fci-tabs').innerHTML=h;
+}
+
+function switchTab(id,btn) {
+  var ts=document.querySelectorAll('.fci-tab');for(var i=0;i<ts.length;i++)ts[i].classList.remove('active');
+  var ps=document.querySelectorAll('.fci-panel');for(var i=0;i<ps.length;i++)ps[i].classList.remove('active');
+  btn.classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+  setTimeout(function(){if(id==='coverage'&&coverageMap)coverageMap.invalidateSize();if(id==='fleet'&&fleetMap)fleetMap.invalidateSize();},100);
+}
+
+function renderAlerts(V) {
+  var problems=[],healthy=[];
+  for(var i=0;i<V.length;i++){if(V[i].tier!=='healthy')problems.push(V[i]);else healthy.push(V[i]);}
+  problems.sort(function(a,b){var o={critical:0,warning:1,minor:2};return (o[a.tier]||3)-(o[b.tier]||3);});
+  var h='<div class="fci-section-title">Vehicles Requiring Attention</div><div class="fci-alert-grid">';
+  for(var i=0;i<problems.length;i++){
+    var v=problems[i];
+    var sc=v.sig>75?'var(--fci-healthy)':v.sig>55?'var(--fci-warning)':'var(--fci-critical)';
+    var uc=v.uptime>98?'var(--fci-healthy)':v.uptime>95?'var(--fci-warning)':'var(--fci-critical)';
+    h+='<div class="fci-alert-card '+v.tier+'" onclick="this.classList.toggle(\'expanded\')">';
+    h+='<div class="fci-alert-header"><div><div class="fci-alert-name">'+v.nm+'</div><div style="font-size:11px;color:var(--zen-text-placeholder);margin-top:2px">IMSI: '+v.imsi+' &middot; IMEI: '+v.imei+' &middot; '+v.carrier+'</div></div><span class="fci-alert-tier '+v.tier+'">'+v.tier+'</span></div>';
+    h+='<div class="fci-alert-metrics">';
+    h+='<div class="fci-metric"><div class="fci-metric-val" style="color:'+sc+'">'+v.sig+'</div><div class="fci-metric-label">Signal dBm</div></div>';
+    h+='<div class="fci-metric"><div class="fci-metric-val"><span class="fci-rat-badge '+v.rat+'">'+v.rat+'</span></div><div class="fci-metric-label">Radio</div></div>';
+    h+='<div class="fci-metric"><div class="fci-metric-val" style="color:var(--fci-critical)">'+v.drops+'</div><div class="fci-metric-label">Drops/24h</div></div>';
+    h+='<div class="fci-metric"><div class="fci-metric-val" style="color:'+uc+'">'+v.uptime+'%</div><div class="fci-metric-label">Uptime</div></div>';
+    h+='</div>';
+    // Error summary row
+    if(v.errCount>0){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">';for(var e=0;e<v.errTypes.length;e++){h+='<span class="fci-err-badge">'+v.errTypes[e]+'</span>';}h+='<span style="font-size:11px;color:var(--zen-text-placeholder);margin-left:auto">'+v.errCount+' errors</span></div>';}
+    if(v.incidents.length>0){h+='<ul class="fci-incident-list">';for(var j=0;j<v.incidents.length;j++){var inc=v.incidents[j];h+='<li class="fci-incident-item"><span class="fci-inc-status '+inc.status+'">'+inc.status+'</span><span style="color:var(--zen-text-secondary)">'+inc.description+'</span><span style="color:var(--zen-text-placeholder);font-size:10px;margin-left:auto">'+inc.severity+'</span></li>';}h+='</ul>';}
+    if(v.events.length>0){h+='<div class="fci-event-log"><div style="font-size:10px;color:var(--zen-text-placeholder);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Recent Network Events (click to expand)</div>';for(var j=0;j<v.events.length;j++){var ev=v.events[j];var t=new Date(ev.occurred_at);var rl={1:'GSM',2:'3G',4:'LTE'}[ev.rat_type]||'?';h+='<div class="fci-event-row"><span style="color:var(--zen-text-placeholder)">'+t.toLocaleTimeString('en-US',{hour12:false})+'</span><span class="fci-event-code">'+ev.code+'</span><span>'+rl+'</span><span style="color:var(--zen-text-placeholder)">Cell:'+ev.cell_id+'</span><span style="color:var(--fci-healthy)">&darr;'+(ev.pdprx/1024).toFixed(0)+'KB</span><span style="color:var(--zen-action-primary)">&uarr;'+(ev.pdptx/1024).toFixed(0)+'KB</span></div>';}h+='</div>';}
+    h+='</div>';
+  }
+  h+='</div>';
+  h+='<div class="fci-healthy-summary"><span class="fci-healthy-icon">&#x2705;</span><div class="fci-healthy-text"><span class="fci-healthy-count">'+healthy.length+'</span> vehicles operating normally &mdash; LTE connected, signal &gt;75 dBm, no incidents</div></div>';
+  document.getElementById('panel-alerts').innerHTML=h;
+}
+
+function renderCoverageMap(V,T) {
+  var c=document.getElementById('panel-coverage');
+  c.innerHTML='<div class="fci-section-title">Network Coverage Heatmap</div><div class="fci-map-wrap"><div id="coverage-map" style="height:100%;width:100%"></div><div class="fci-map-legend"><div style="font-weight:700;margin-bottom:6px">Signal Strength</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#2B6436"></div> Strong (&gt;85)</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#46AF55"></div> Good (70-85)</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#B8860B"></div> Fair (55-70)</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#D97706"></div> Weak (40-55)</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#C51A11"></div> Critical (&lt;40)</div><div style="margin-top:8px;font-weight:700">Cell Towers</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#6C3FC0"></div> LTE</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#B8860B"></div> 3G</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#C51A11"></div> 2G</div></div></div>';
+  setTimeout(function(){
+    coverageMap=L.map('coverage-map').setView([42.0,-8.5],9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM',maxZoom:18}).addTo(coverageMap);
+    for(var i=0;i<T.length;i++){var t=T[i];var cl=ratColor(t.rat);L.circleMarker([t.lat,t.lon],{radius:t.weak?4:6,fillColor:cl,fillOpacity:0.25,color:cl,weight:1,opacity:0.4}).addTo(coverageMap).bindPopup('<b>'+t.carrier+'</b><br>'+t.rat+' &middot; Cell:'+t.cell+(t.weak?'<br><b style="color:#C51A11">Weak Zone</b>':''));}
+    for(var i=0;i<V.length;i++){var v=V[i];if(!v.lat||!v.lon)continue;var cl=sigColor(v.sig);L.circle([v.lat,v.lon],{radius:3000,fillColor:cl,fillOpacity:0.12,color:cl,weight:0}).addTo(coverageMap);L.circleMarker([v.lat,v.lon],{radius:7,fillColor:cl,fillOpacity:0.9,color:cl,weight:1,opacity:0.8}).addTo(coverageMap).bindPopup('<b>'+v.nm+'</b><br>'+v.sig+' dBm &middot; '+v.rat);}
+    coverageMap.invalidateSize();
+  },150);
+}
+
+function renderFleetMap(V,T) {
+  var c=document.getElementById('panel-fleet');
+  c.innerHTML='<div class="fci-section-title">Fleet Status &mdash; Vehicle Positions</div><div class="fci-map-wrap"><div id="fleet-map" style="height:100%;width:100%"></div><div class="fci-map-legend"><div style="font-weight:700;margin-bottom:6px">Vehicle Status</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#C51A11"></div> Critical</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#B8860B"></div> Warning</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#0078D3"></div> Minor</div><div class="fci-legend-item"><div class="fci-legend-dot" style="background:#2B6436"></div> Healthy</div></div></div>';
+  setTimeout(function(){
+    fleetMap=L.map('fleet-map').setView([42.0,-8.5],9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM',maxZoom:18}).addTo(fleetMap);
+    for(var i=0;i<V.length;i++){var v=V[i];if(!v.lat||!v.lon)continue;var cl=tierColor(v.tier);var sz=v.tier==='critical'?10:v.tier==='warning'?8:6;
+    L.circleMarker([v.lat,v.lon],{radius:sz+4,fillColor:ratColor(v.rat),fillOpacity:0.2,color:ratColor(v.rat),weight:1,opacity:0.4}).addTo(fleetMap);
+    L.circleMarker([v.lat,v.lon],{radius:sz,fillColor:cl,fillOpacity:0.9,color:cl,weight:1,opacity:0.8}).addTo(fleetMap).bindPopup('<div style="font-family:Roboto,sans-serif;min-width:200px"><b style="font-size:14px">'+v.nm+'</b> <span style="background:'+cl+';color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;text-transform:uppercase">'+v.tier+'</span><br><br><table style="font-size:11px;width:100%"><tr><td style="color:#4E677E">Signal</td><td><b>'+v.sig+' dBm</b></td></tr><tr><td style="color:#4E677E">Radio</td><td style="color:'+ratColor(v.rat)+';font-weight:700">'+v.rat+'</td></tr><tr><td style="color:#4E677E">Carrier</td><td>'+v.carrier+'</td></tr><tr><td style="color:#4E677E">IMSI</td><td style="font-family:Roboto Mono,monospace;font-size:10px">'+v.imsi+'</td></tr><tr><td style="color:#4E677E">IMEI</td><td style="font-family:Roboto Mono,monospace;font-size:10px">'+v.imei+'</td></tr><tr><td style="color:#4E677E">Cell</td><td>'+v.mcc+'-'+v.mnc+'-'+v.lac+'-'+v.cell+'</td></tr><tr><td style="color:#4E677E">Drops/24h</td><td>'+v.drops+'</td></tr><tr><td style="color:#4E677E">Errors</td><td>'+v.errCount+'</td></tr><tr><td style="color:#4E677E">Data</td><td>'+v.used+'/'+v.plan+' MB</td></tr></table></div>');}
+    fleetMap.invalidateSize();
+  },150);
+}
+
+function renderDataUsage(V) {
+  var sorted=V.slice().sort(function(a,b){return a.balPct-b.balPct;});
+  var h='<div class="fci-section-title">SIM Data Usage &amp; Balance</div><div class="fci-table-wrap"><div class="fci-table-scroll"><table class="fci-table"><thead><tr><th>Vehicle</th><th>Signal</th><th>Radio</th><th>Carrier</th><th>Downloaded</th><th>Uploaded</th><th>Balance</th><th>Usage</th><th>Drops</th><th>Status</th></tr></thead><tbody>';
+  for(var i=0;i<sorted.length;i++){var v=sorted[i];var up=Math.round(v.used/v.plan*100);var bc=up>90?'var(--fci-critical)':up>70?'var(--fci-warning)':'var(--fci-healthy)';var sc=v.sig>75?'var(--fci-healthy)':v.sig>55?'var(--fci-warning)':'var(--fci-critical)';
+  h+='<tr><td><b>'+v.nm+'</b><div style="font-size:10px;color:var(--zen-text-placeholder)">'+v.imsi+'</div></td><td style="font-family:Roboto Mono,monospace;color:'+sc+'">'+v.sig+'</td><td><span class="fci-rat-badge '+v.rat+'">'+v.rat+'</span></td><td style="font-size:12px;color:var(--zen-text-secondary)">'+v.carrier+'</td><td style="font-family:Roboto Mono,monospace">'+(v.dlBytes/1048576).toFixed(1)+' MB</td><td style="font-family:Roboto Mono,monospace">'+(v.ulBytes/1048576).toFixed(1)+' MB</td><td style="font-family:Roboto Mono,monospace;color:'+(v.balPct<25?'var(--fci-critical)':v.balPct<50?'var(--fci-warning)':'var(--zen-text-primary)')+'">'+v.balPct+'%</td><td style="min-width:100px"><div class="fci-usage-bar"><div class="fci-usage-fill" style="width:'+up+'%;background:'+bc+'"></div></div><div style="font-size:9px;color:var(--zen-text-placeholder);margin-top:2px">'+v.used+'/'+v.plan+'</div></td><td style="font-family:Roboto Mono,monospace;color:'+(v.drops>5?'var(--fci-critical)':v.drops>2?'var(--fci-warning)':'var(--zen-text-secondary)')+'">'+v.drops+'</td><td><span class="fci-alert-tier '+v.tier+'" style="font-size:9px">'+v.tier+'</span></td></tr>';}
+  h+='</tbody></table></div></div>';
+  document.getElementById('panel-data').innerHTML=h;
+}
+
+/* ===== TAB 5: NETWORK DIAGNOSTICS ===== */
+function renderDiagnostics(V,errors) {
+  // Compute fleet aggregates
+  var totPdpA=0,totPdpS=0,totLocU=0,totLocS=0,totErr=0;
+  for(var i=0;i<V.length;i++){totPdpA+=V[i].pdpAttempts;totPdpS+=V[i].pdpSuccess;totLocU+=V[i].locUpdates;totLocS+=V[i].locSuccess;totErr+=V[i].errCount;}
+  var pdpRate=totPdpA>0?Math.round(totPdpS/totPdpA*100):0;
+  var locRate=totLocU>0?Math.round(totLocS/totLocU*100):0;
+
+  var h='<div class="fci-section-title">Fleet-Wide Network Diagnostics</div>';
+  // Summary cards (mirroring Telenor IoT diagnostics)
+  h+='<div class="fci-diag-grid">';
+  h+='<div class="fci-diag-card"><div class="fci-diag-card-title">Session Setup Success</div><div class="fci-diag-card-val" style="color:'+(pdpRate>90?'var(--fci-healthy)':pdpRate>75?'var(--fci-warning)':'var(--fci-critical)')+'">'+pdpRate+'%</div><div class="fci-diag-card-sub">'+totPdpS+' / '+totPdpA+' PDP activations</div><div class="fci-diag-card-bar"><div class="fci-diag-card-fill" style="width:'+pdpRate+'%;background:'+(pdpRate>90?'var(--fci-healthy)':pdpRate>75?'var(--fci-warning)':'var(--fci-critical)')+'"></div></div></div>';
+  h+='<div class="fci-diag-card"><div class="fci-diag-card-title">Location Update Success</div><div class="fci-diag-card-val" style="color:'+(locRate>90?'var(--fci-healthy)':locRate>75?'var(--fci-warning)':'var(--fci-critical)')+'">'+locRate+'%</div><div class="fci-diag-card-sub">'+totLocS+' / '+totLocU+' location updates</div><div class="fci-diag-card-bar"><div class="fci-diag-card-fill" style="width:'+locRate+'%;background:'+(locRate>90?'var(--fci-healthy)':locRate>75?'var(--fci-warning)':'var(--fci-critical)')+'"></div></div></div>';
+  h+='<div class="fci-diag-card"><div class="fci-diag-card-title">Network Errors (24h)</div><div class="fci-diag-card-val" style="color:'+(totErr===0?'var(--fci-healthy)':totErr<20?'var(--fci-warning)':'var(--fci-critical)')+'">'+totErr+'</div><div class="fci-diag-card-sub">across '+V.filter(function(x){return x.errCount>0}).length+' vehicles</div></div>';
+  h+='<div class="fci-diag-card"><div class="fci-diag-card-title">Active Subscriptions</div><div class="fci-diag-card-val">'+V.length+'</div><div class="fci-diag-card-sub">'+V.filter(function(x){return x.comm}).length+' currently communicating</div></div>';
+  h+='</div>';
+
+  // Sub-tabs for breakdown
+  h+='<div class="fci-sub-tabs" id="diag-sub-tabs"><button class="fci-sub-tab active" onclick="switchDiagSub(\'carrier\',this)">By Carrier</button><button class="fci-sub-tab" onclick="switchDiagSub(\'country\',this)">By Country</button><button class="fci-sub-tab" onclick="switchDiagSub(\'rat\',this)">By Radio Technology</button></div>';
+  h+='<div id="diag-sub-content"></div>';
+  document.getElementById('panel-diag').innerHTML=h;
+  renderDiagSub('carrier');
+}
+
+function switchDiagSub(view,btn) {
+  var ts=document.querySelectorAll('#diag-sub-tabs .fci-sub-tab');for(var i=0;i<ts.length;i++)ts[i].classList.remove('active');
+  if(btn)btn.classList.add('active');
+  renderDiagSub(view);
+}
+
+function renderDiagSub(view) {
+  var V=MOCK.v;
+  var groups={};
+  for(var i=0;i<V.length;i++){
+    var key=view==='carrier'?V[i].carrier:view==='country'?V[i].country:V[i].rat;
+    if(!groups[key])groups[key]={count:0,dl:0,ul:0,drops:0,errs:0,lte:0,sig:0,pdpA:0,pdpS:0,critical:0,warning:0,minor:0,healthy:0,vehicles:[]};
+    var g=groups[key];g.count++;g.dl+=V[i].dlBytes;g.ul+=V[i].ulBytes;g.drops+=V[i].drops;g.errs+=V[i].errCount;g.sig+=V[i].sig;g.pdpA+=V[i].pdpAttempts;g.pdpS+=V[i].pdpSuccess;if(V[i].rat==='LTE')g.lte++;g[V[i].tier]++;g.vehicles.push(V[i]);
+  }
+  var h='<div class="fci-table-wrap"><table class="fci-table"><thead><tr><th>'+({carrier:'Carrier/Operator',country:'Country',rat:'Radio Technology'}[view])+'</th><th>Vehicles</th><th>Health</th><th>Downloaded</th><th>Uploaded</th><th>Avg Signal</th><th>Session Success</th><th>Drops (24h)</th><th>Errors</th><th>Actions</th></tr></thead><tbody>';
+  var keys=Object.keys(groups).sort(function(a,b){return groups[b].errs-groups[a].errs;});
+  for(var k=0;k<keys.length;k++){
+    var key=keys[k];var g=groups[key];var pr=g.pdpA>0?Math.round(g.pdpS/g.pdpA*100):100;
+    var rc=g.errs>10?'var(--fci-critical)':g.errs>3?'var(--fci-warning)':'var(--zen-text-secondary)';
+    h+='<tr><td><b>'+key+'</b></td><td style="font-family:Roboto Mono,monospace">'+g.count+'</td>';
+    h+='<td>';
+    if(g.critical>0)h+='<span class="fci-alert-tier critical" style="font-size:8px;margin-right:3px">'+g.critical+'C</span>';
+    if(g.warning>0)h+='<span class="fci-alert-tier warning" style="font-size:8px;margin-right:3px">'+g.warning+'W</span>';
+    if(g.minor>0)h+='<span class="fci-alert-tier minor" style="font-size:8px;margin-right:3px">'+g.minor+'M</span>';
+    h+='<span style="font-size:10px;color:var(--zen-text-placeholder)">'+g.healthy+'ok</span></td>';
+    h+='<td style="font-family:Roboto Mono,monospace">'+(g.dl/1073741824).toFixed(2)+' GB</td>';
+    h+='<td style="font-family:Roboto Mono,monospace">'+(g.ul/1073741824).toFixed(2)+' GB</td>';
+    h+='<td style="font-family:Roboto Mono,monospace;color:'+sigColor(Math.round(g.sig/g.count))+'">'+Math.round(g.sig/g.count)+' dBm</td>';
+    h+='<td style="font-family:Roboto Mono,monospace;color:'+(pr>90?'var(--fci-healthy)':pr>75?'var(--fci-warning)':'var(--fci-critical)')+'">'+pr+'%</td>';
+    h+='<td style="font-family:Roboto Mono,monospace;color:'+rc+'">'+g.drops+'</td>';
+    h+='<td style="font-family:Roboto Mono,monospace;color:'+rc+'">'+g.errs+'</td>';
+    h+='<td><button class="fci-btn fci-btn-secondary" style="font-size:10px;padding:4px 10px" onclick="exportGroup(\''+view+'\',\''+key+'\')">Export CSV</button></td></tr>';
+  }
+  h+='</tbody></table></div>';
+  document.getElementById('diag-sub-content').innerHTML=h;
+}
+
+/* ===== TAB 6: ERRORS & EXPORT ===== */
+function renderErrors(V,errors) {
+  var h='<div class="fci-section-title">Network Error Log &amp; Identifier Export</div>';
+  // Export bar
+  h+='<div class="fci-export-bar"><div><b style="color:var(--zen-text-primary)">Export Vehicle Identifiers</b><div style="font-size:11px;color:var(--zen-text-secondary);margin-top:2px">Download IMSI/IMEI lists for support escalation or Aeris portal lookup</div></div><div class="fci-btn-group">';
+  h+='<button class="fci-btn fci-btn-primary" onclick="exportAll()">&#x2B07; All Vehicles CSV</button>';
+  h+='<button class="fci-btn fci-btn-secondary" onclick="exportTroubled()">&#x26A0; Troubled Only CSV</button>';
+  h+='<button class="fci-btn fci-btn-secondary" onclick="exportByCarrier()">&#x1F4F6; By Carrier CSV</button>';
+  h+='</div></div>';
+
+  // Error type summary
+  var errByType={};
+  for(var i=0;i<errors.length;i++){var e=errors[i];if(!errByType[e.errCode])errByType[e.errCode]={count:0,desc:e.errDesc,vehicles:{}};errByType[e.errCode].count++;errByType[e.errCode].vehicles[e.vehicle]=1;}
+  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">';
+  var etKeys=Object.keys(errByType).sort(function(a,b){return errByType[b].count-errByType[a].count;});
+  for(var i=0;i<etKeys.length;i++){
+    var ek=etKeys[i];var et=errByType[ek];
+    h+='<div class="fci-diag-card" style="border-left:3px solid var(--fci-critical)"><div class="fci-diag-card-title" style="color:var(--fci-critical)">'+ek.replace(/_/g,' ')+'</div><div class="fci-diag-card-val" style="font-size:20px">'+et.count+'</div><div class="fci-diag-card-sub">'+Object.keys(et.vehicles).length+' vehicle(s) affected</div><div class="fci-err-desc">'+et.desc+'</div></div>';
+  }
+  h+='</div>';
+
+  // Error log table
+  h+='<div class="fci-table-wrap"><div class="fci-table-scroll" style="max-height:400px"><table class="fci-table"><thead><tr><th>Time</th><th>Vehicle</th><th>IMSI</th><th>IMEI</th><th>Error</th><th>Carrier</th><th>Country</th><th>Radio</th><th>Cell</th><th>Tier</th></tr></thead><tbody>';
+  for(var i=0;i<errors.length;i++){
+    var e=errors[i];var tc=e.tier==='critical'?'var(--fci-critical)':e.tier==='warning'?'var(--fci-warning)':'var(--zen-text-secondary)';
+    h+='<tr><td style="font-family:Roboto Mono,monospace;font-size:11px;white-space:nowrap">'+(e.ts?new Date(e.ts).toLocaleTimeString('en-US',{hour12:false}):'—')+'</td>';
+    h+='<td><b>'+e.vehicle+'</b></td>';
+    h+='<td style="font-family:Roboto Mono,monospace;font-size:10px">'+e.imsi+'</td>';
+    h+='<td style="font-family:Roboto Mono,monospace;font-size:10px">'+e.imei+'</td>';
+    h+='<td><span class="fci-err-badge">'+e.errCode+'</span></td>';
+    h+='<td style="font-size:12px">'+e.carrier+'</td>';
+    h+='<td style="font-size:12px">'+e.country+'</td>';
+    h+='<td><span class="fci-rat-badge '+e.rat+'">'+e.rat+'</span></td>';
+    h+='<td style="font-family:Roboto Mono,monospace;font-size:10px">'+e.cell+'</td>';
+    h+='<td><span class="fci-alert-tier '+e.tier+'" style="font-size:9px">'+e.tier+'</span></td></tr>';
+  }
+  h+='</tbody></table></div></div>';
+  document.getElementById('panel-errors').innerHTML=h;
+}
+
+/* ===== EXPORT FUNCTIONS ===== */
+function downloadCSV(filename, csvContent) {
+  var blob = new Blob([csvContent], {type:'text/csv;charset=utf-8;'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+function exportAll() {
+  var rows=['Vehicle,IMSI,IMEI,Carrier,Country,RAT,Signal_dBm,Tier,Drops_24h,Errors,Data_Used_MB,Balance_Pct,Cell_ID,PDP_Success_Rate,Uptime_Pct'];
+  for(var i=0;i<MOCK.v.length;i++){var v=MOCK.v[i];var pr=v.pdpAttempts>0?Math.round(v.pdpSuccess/v.pdpAttempts*100):100;rows.push([v.nm,v.imsi,v.imei,v.carrier,v.country,v.rat,v.sig,v.tier,v.drops,v.errCount,v.used,v.balPct,v.mcc+'-'+v.mnc+'-'+v.lac+'-'+v.cell,pr,v.uptime].join(','));}
+  downloadCSV('fleet_all_vehicles_'+new Date().toISOString().slice(0,10)+'.csv',rows.join('\n'));
+}
+
+function exportTroubled() {
+  var rows=['Vehicle,IMSI,IMEI,Carrier,Country,RAT,Signal_dBm,Tier,Drops_24h,Errors,Error_Types,Data_Used_MB,Cell_ID,PDP_Success_Rate,Uptime_Pct'];
+  for(var i=0;i<MOCK.v.length;i++){var v=MOCK.v[i];if(v.tier==='healthy')continue;var pr=v.pdpAttempts>0?Math.round(v.pdpSuccess/v.pdpAttempts*100):100;rows.push([v.nm,v.imsi,v.imei,v.carrier,v.country,v.rat,v.sig,v.tier,v.drops,v.errCount,'"'+v.errTypes.join(';')+'"',v.used,v.mcc+'-'+v.mnc+'-'+v.lac+'-'+v.cell,pr,v.uptime].join(','));}
+  downloadCSV('fleet_troubled_vehicles_'+new Date().toISOString().slice(0,10)+'.csv',rows.join('\n'));
+}
+
+function exportByCarrier() {
+  var carriers={};for(var i=0;i<MOCK.v.length;i++){var v=MOCK.v[i];if(!carriers[v.carrier])carriers[v.carrier]=[];carriers[v.carrier].push(v);}
+  var rows=['Carrier,Vehicle,IMSI,IMEI,Country,RAT,Signal_dBm,Tier,Drops_24h,Errors,Data_Used_MB'];
+  var keys=Object.keys(carriers).sort();
+  for(var k=0;k<keys.length;k++){var c=keys[k];var vs=carriers[c].sort(function(a,b){return a.sig-b.sig;});for(var i=0;i<vs.length;i++){var v=vs[i];rows.push([c,v.nm,v.imsi,v.imei,v.country,v.rat,v.sig,v.tier,v.drops,v.errCount,v.used].join(','));}}
+  downloadCSV('fleet_by_carrier_'+new Date().toISOString().slice(0,10)+'.csv',rows.join('\n'));
+}
+
+function exportGroup(view, key) {
+  var rows=['Vehicle,IMSI,IMEI,Carrier,Country,RAT,Signal_dBm,Tier,Drops_24h,Errors,Data_Used_MB'];
+  for(var i=0;i<MOCK.v.length;i++){var v=MOCK.v[i];var match=view==='carrier'?v.carrier:view==='country'?v.country:v.rat;if(match!==key)continue;rows.push([v.nm,v.imsi,v.imei,v.carrier,v.country,v.rat,v.sig,v.tier,v.drops,v.errCount,v.used].join(','));}
+  downloadCSV('fleet_'+view+'_'+key.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv',rows.join('\n'));
+}
+
+// MyGeotab Add-In interface
+// MyGeotab Add-In lifecycle
+if(typeof geotab!=='undefined'||typeof api!=='undefined'){
+  window.geotab=window.geotab||{};window.geotab.addin=window.geotab.addin||{};
+  var fn=function(api,state,callback){try{initDashboard();}catch(e){console.warn('FCI init:',e);}if(typeof callback==='function')callback();};
+  geotab.addin['fleet_connectivity_intelligence-fleet_connectivity_v3']=fn;
+  geotab.addin['fleetConnectivity']=fn;
+}
+else{document.addEventListener('DOMContentLoaded',initDashboard);}
+window.addEventListener('load',function(){if(!document.getElementById('fci-kpis').innerHTML)initDashboard();});
+
+}catch(e){console.warn("FCI error:",e);}
+</script>
+</body>
+</html>
