@@ -1,0 +1,15 @@
+{
+  "name": "Connectivity Assistant",
+  "supportEmail": "https://github.com/timboapi230/fleet-connectivity-intelligence",
+  "version": "1.0.0",
+  "items": [
+    {
+      "url": "connectivity_assistant.html",
+      "path": "ActivityLink",
+      "menuName": {
+        "en": "Connectivity Assistant"
+      },
+      "icon": "https://raw.githubusercontent.com/timboapi230/fleet-connectivity-intelligence/main/icon.svg"
+    }
+  ]
+}
