@@ -1,0 +1,782 @@
+openapi: 3.0.0
+info:
+  version: 2.1.4
+  title: Subscription Signalling Events
+  description: |
+    #### Copyright
+    © Aeris Communications, Inc. 2026. All rights reserved. No part of this document may be reproduced in any form without the written permission of the copyright owner.
+
+    #### Disclaimer
+
+    The contents of this document are subject to revision without notice due to continued progress in methodology, design and manufacturing.
+    Aeris shall have no liability for any error or damage of any kind resulting from the use of this document.
+
+    #### Trademark List
+
+    All trademarks mentioned herein are the property of their respective owners.
+    These are shown in the document Trademark Information.
+
+    # Introduction
+
+    This low level API provides resources for getting signalling events for subscriptions.
+
+    ## Scope
+
+    This document covers the following topics:
+
+    — An overview of the API
+
+    — A detailed description of all operations offered by the API
+
+    ## Prerequisites
+    In this document, it is assumed that the user is familiar with the following:
+
+    — Java Script Object Notation (JSON)
+
+    — Basic understanding of REST web services
+
+    — The [OpenAPI Initiative](https://www.openapis.org/) for the standardized format used in this document.
+
+    ## Related Information
+    The definition and explanation of acronyms and terminology and typographic conventions can be found in the following documents:
+
+    — IoTA Glossary of Terms and Acronyms
+
+    — Typographic Conventions
+
+    # General API Guidelines
+
+    ## Compatibility
+
+    API audience must be prepared for compatible API extensions:
+
+    - Be tolerant with unknown fields in the payload (see also Fowler’s "TolerantReader" post), i.e. ignore new fields but do not eliminate them from payload if needed for subsequent PUT requests.
+    - Be prepared that "x-extensible-enum" return parameter may deliver new values. Either be agnostic or provide default behavior for unknown values.
+    - Be prepared to handle HTTP status codes not explicitly specified in endpoint definitions.
+    - Follow the redirect when the server returns HTTP status 301 Moved Permanently.
+
+    ## Security
+
+    This section describes the security measures in the API. Security measures include authentication, authorization, and encryption.
+
+    ### Authentication and Authorization
+
+    The API uses OAuth2 and OpenID Connect (OIDC) for authentication and authorization.
+
+    All API endpoints require authentication, which is performed by passing a token in the Authorization header in each request, preceded by the word Bearer and a space. See the following example:
+    ```
+    curl -i -X GET "https://<baseURL>/iot/api/xdr/events?imsi=11111111111111" -H "Content-Type: application/json" -H "Authorization: Bearer <TOKEN_GOES_HERE>"
+    ```
+    To fetch the token using e.g. curl, submit the following:
+    ```
+    curl -X POST "https://<baseURL>/iot/api/auth/token" -H "Accept: application/vnd.dcp-v1+json" -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&client_id=<client_id>&username=<username>&password=<password>"
+    ```
+    ### Encryption
+
+    All API requests are encrypted using the HTTPS protocol to grant secure data transfer.
+
+    
+    ## Deprecation
+
+    API deprecation will be reflected in the OpenAPI definition. If a method on a path, a whole path or even a whole API endpoint (multiple paths) should be deprecated, they will be marked as deprecated.
+    During deprecation phase, a Deprecation header and a Sunset header fields will be added in the response.
+
+    Example:
+    ```
+    Deprecation: Tue, 31 Dec 2024 23:59:59 GMT
+    Sunset: Wed, 31 Dec 2025 23:59:59 GMT
+    ```
+    
+    API audience should not start using a deprecated API.
+
+    API audience is encouraged to monitor for Deprecation and Sunset header.
+
+  x-audience: external-partner
+  x-api-id: fccaf317-7946-4703-bcd8-40ee0f66eb7f
+tags:
+  - name: Events
+    description: Signalling events for subscriptions.
+servers:
+  - url: https://iot-api.aeris.com/iot/api/xdr
+    description: API server
+paths:
+  /events:
+    get:
+      tags:
+        - Events
+      summary: List subscription events.
+      description: |
+        This resource will return a list of signalling events registered for all the IMSIs that you supply in the request.
+
+        ### NOTE:
+
+        * Data is only available from 1 day prior to the current time.
+        * The maximum interval to query is 1 day.
+
+      operationId: listSubscriptionEvents
+      parameters:
+        - $ref: '#/components/parameters/imsiParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/codeParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/additionalFieldsParam'
+        - $ref: '#/components/parameters/cursorParam'
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-RateLimit-Limit-Second:
+              $ref: '#/components/headers/X-RateLimit-Limit-Second'
+            X-RateLimit-Limit-Minute:
+              $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+            X-RateLimit-Remaining-Second:
+              $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+            X-RateLimit-Remaining-Minute:
+              $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  next:
+                    description: Opaque string returned within the meta object response on endpoints which support pagination. Indicates that more results are available and can be used as the 'cursor' parameter in the next request to return the next page of results. The last page of results will not have a 'next' present.
+                    type: string
+                    example: 'DFVSDB3434%DFB%EYY445'
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+        '400':
+          description: Bad reqeust.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/400Response'
+        '401':
+          description: Authentication Failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/401Response'
+        '404':
+          description: No Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/404Response'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/500Response'
+        '503':
+          description: Service Unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/503Response'
+        '529':
+          description: Service Overloaded
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/529Response'
+        default:
+          description: The standard http error codes will be given. 4XX for client errors and 5XX for server errors.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - OAuth2:
+            - xdr-raw-api.read
+            - subscription-signalling-events.read
+  /events/{event_id}:
+    get:
+      deprecated: false
+      tags:
+        - Events
+      summary: Get subscription event details.
+      description: Get subscription event details for the specified event id.
+      operationId: getSubscriptionEventDetails
+      parameters:
+        - $ref: '#/components/parameters/eventIdParam'
+        - $ref: '#/components/parameters/fieldsParam'
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-RateLimit-Limit-Second:
+              $ref: '#/components/headers/X-RateLimit-Limit-Second'
+            X-RateLimit-Limit-Minute:
+              $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+            X-RateLimit-Remaining-Second:
+              $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+            X-RateLimit-Remaining-Minute:
+              $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Bad reqeust.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/400Response'
+        '401':
+          description: Authentication Failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/401Response'
+        '404':
+          description: No Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/404Response'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/500Response'
+        '503':
+          description: Service Unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/503Response'
+        '529':
+          description: Service Overloaded
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/529Response'
+        default:
+          description: The standard http error codes will be given. 4XX for client errors and 5XX for server errors.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - OAuth2:
+            - xdr-raw-api.read
+            - subscription-signalling-events.read
+components:
+  parameters:
+    imsiParam:
+      in: query
+      name: imsi
+      description: One or more imsi(s), comma separated, which identifies the subscription(s) to get events for, e.g. "238208000000001,238208000000002". The maximum imsi number is 15.
+      required: true
+      style: form
+      explode: false
+      schema:
+        type: string
+      allowReserved: true
+      example: '238208000000001,238208000000002'
+    eventIdParam:
+      in: path
+      name: event_id
+      description: An id which identifies a specific signalling event, which is the id field in response of /events.
+      required: true
+      schema:
+        type: string
+    fromParam:
+      in: query
+      name: from
+      description: The start time, UTC, for the time window processed to generate the response, e.g. "2019-06-28T00:00:00.000Z". If not input, will use default value "One hour ago (UTC)".
+      required: false
+      schema:
+        type: string
+        format: date-time
+      allowReserved: true
+      example: '2019-06-28T00:00:00.000Z'
+    toParam:
+      in: query
+      name: to
+      description: The end time, UTC, for the time window processed to generate the response, e.g. "2019-06-28T00:00:00.000Z". If not input, will use default value "Now (UTC)".
+      required: false
+      schema:
+        type: string
+        format: date-time
+      allowReserved: true
+      example: '2019-06-28T01:00:00.000Z'
+    limitParam:
+      in: query
+      name: limit
+      description: Specifies the maximum number of events to be returned, allowed interval is 1-1000, if not input, will use default value "100".
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1000
+      example: 100
+    codeParam:
+      in: query
+      name: code
+      description: One or more codes, comma separated, filtering which events to retrieve, e.g. "l42,m56".
+      required: false
+      schema:
+        type: string
+      example: 'l42,m56'
+    sortParam:
+      in: query
+      name: sort
+      description: Sort parameter containing sort field and sort mode used for getting the event data, e.g. "occurred_at:asc". If not input, will use default value "occurred_at:asc".
+      schema:
+        type: string
+        enum:
+          - code:asc
+          - code:desc
+          - occurred_at:asc
+          - occurred_at:desc
+      allowReserved: true
+    cursorParam:
+      in: query
+      name: cursor
+      description: |
+        Parameter used for display the content of next page on pagination, cannot be used with other parameters in one request.
+
+        Set to the value of 'next' for the next page of results.
+      schema:
+        type: string
+      allowReserved: true
+    fieldsParam:
+      name: fields
+      in: query
+      description: |
+        Parameter used to filter the response object, you can determine a subset of fields that you want to
+        include in the response, e.g. "(imsi,lac)".
+
+
+        __Request__
+
+
+        GET /events/WOh6LIABUqU6IY0JSVLK
+
+
+        __Response__
+
+        ```json
+
+        {
+          "imsi": "238208000000001",
+          "id": "WOh6LIABUqU6IY0JSVLK",
+          "code": "m46-0",
+          "occurred_at": "2017-06-27T15:47:03.000Z",
+          "rat_type": 1,
+          "visited_nw": "France | Orange",
+          "imei": "676767676767",
+          "lac": "2323",
+          "lai": "2323",
+          "ggsn_ip": "8.8.8.8",
+          "sgsn_ip": "8.8.4.4",
+          "apn": "ericsson.api.net"
+          ...
+        }
+
+        ```
+
+
+        __Request__
+
+
+        GET /events/WOh6LIABUqU6IY0JSVLK?__fields=(imsi,lac)__
+
+
+        __Response__
+
+        ```json
+
+        {
+          "imsi": "238208000000001",
+          "lac": "2323"
+        }
+
+        ```
+      required: false
+      schema:
+        type: string
+      allowReserved: true
+    additionalFieldsParam:
+      name: additionalFields
+      in: query
+      description: |
+        Parameter used to filter the response object, you can determine a subset of additional fields that you want to
+        include in the response, e.g. "lac,apn".
+
+
+        __Request__
+
+
+        GET /events
+
+
+        __Response__
+
+        ```json
+
+        {
+          "next": "DFVSDB3434%DFB%EYY445",
+          "items": [
+            {
+              "imsi": "238208000000001",
+              "id": "WOh6LIABUqU6IY0JSVLK",
+              "code": "m46-0",
+              "occurred_at": "2017-06-27T15:47:03.000Z",
+            }
+            ...
+          ]
+        }
+
+        ```
+
+
+        __Request__
+
+
+        GET /events?__additionalFields=lac,apn__
+
+
+        __Response__
+
+        ```json
+
+        {
+          "next": "DFVSDB3434%DFB%EYY445",
+          "items": [
+            {
+              "imsi": "238208000000001",
+              "id": "WOh6LIABUqU6IY0JSVLK",
+              "code": "m46-0",
+              "occurred_at": "2017-06-27T15:47:03.000Z",
+              "lac": "2323",
+              "apn": "ericsson.api.net"
+            }
+            ...
+          ]
+        }
+
+        ```
+      required: false
+      schema:
+        type: string
+      allowReserved: true
+  schemas:
+    ListEvent:
+      type: object
+      required: [imsi, id, code, occurred_at]
+      properties:
+        imsi:
+          type: string
+          description: The international mobile subscriber identity. An internationally standardized unique number to identify a mobile subscription.
+        id:
+          type: string
+          description: Unique internal identity for the event.
+        code:
+          type: string
+          description: |
+
+            Event type code from the analytics records.
+
+            <table class="relative-table wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col style="width: 104.0px;"><col style="width: 244.0px;"><col style="width: 271.0px;"></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event type: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Event type</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event description: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Event description</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="2" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Comment: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Comment</div></th></tr></thead><tbody aria-live="polite" aria-relevant="all"><tr role="row"><td class="confluenceTd">g1-0</td><td colspan="1" class="confluenceTd">PDP context active</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g1-1</td><td colspan="1" class="confluenceTd">PDP context smAbort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g1-2</td><td colspan="1" class="confluenceTd">PDP context error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g1-3</td><td colspan="1" class="confluenceTd">PDP context timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g2-0</td><td colspan="1" class="confluenceTd">PDP context terminate</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g2-1</td><td colspan="1" class="confluenceTd">PDP context terminate smAbort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g2-2</td><td colspan="1" class="confluenceTd">PDP context teminate error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g2-3</td><td colspan="1" class="confluenceTd">PDP context terminate timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g3-0</td><td colspan="1" class="confluenceTd">SGSN Context Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g4-0</td><td colspan="1" class="confluenceTd">Modify PDP</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g4-1</td><td colspan="1" class="confluenceTd">Modify PDP smAbort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g4-3</td><td colspan="1" class="confluenceTd">Modify PDP timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g5-0</td><td colspan="1" class="confluenceTd">Peak Report</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g6-0</td><td colspan="1" class="confluenceTd">Error Indication</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g6-1</td><td colspan="1" class="confluenceTd">Error Indication Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g6-2</td><td colspan="1" class="confluenceTd">Error Indication Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">g6-3</td><td colspan="1" class="confluenceTd">Error Indication Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m2</td><td colspan="1" class="confluenceTd">GSM Location Update</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m3</td><td colspan="1" class="confluenceTd">GSM Location Update cancel</td><td colspan="1" class="confluenceTd">Triggered by Device Reconnect</td></tr><tr role="row"><td class="confluenceTd">m4</td><td colspan="1" class="confluenceTd">Provide Roaming Number</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m7</td><td colspan="1" class="confluenceTd">Insert Subscriber Data</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m8</td><td colspan="1" class="confluenceTd">Delete Subscriber Data</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m9</td><td colspan="1" class="confluenceTd">Send Parameters</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m12</td><td colspan="1" class="confluenceTd">Activate SS</td><td colspan="1" class="confluenceTd">Suppl services</td></tr><tr role="row"><td class="confluenceTd">m13</td><td colspan="1" class="confluenceTd">Deactivate SS</td><td colspan="1" class="confluenceTd"><span>Suppl services</span></td></tr><tr role="row"><td class="confluenceTd">m14</td><td colspan="1" class="confluenceTd">Interrogate SS</td><td colspan="1" class="confluenceTd"><span>Suppl services</span></td></tr><tr role="row"><td class="confluenceTd">m15</td><td colspan="1" class="confluenceTd">Authentication Failure Report</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m22</td><td colspan="1" class="confluenceTd">Send Routing Info</td><td colspan="1" class="confluenceTd">No available currently</td></tr><tr role="row"><td class="confluenceTd">m23</td><td colspan="1" class="confluenceTd">GPRS Location Update</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m25</td><td colspan="1" class="confluenceTd">GPRS failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m26</td><td colspan="1" class="confluenceTd">GPRS attach</td><td colspan="1" class="confluenceTd">Mobile station ready for 2G/3G</td></tr><tr role="row"><td class="confluenceTd">m44</td><td colspan="1" class="confluenceTd">MT Forward SM</td><td colspan="1" class="confluenceTd">Forward Mobile Terminated SMS</td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m45</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">Send Routing Info For SM</span></td><td colspan="1" class="confluenceTd">No available currently</td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m46-0</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">SMS MT Deliver</span></td><td colspan="1" class="confluenceTd">SM-TL<span>(carried in mt-ForwardSM)</span></td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m46-1</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">SMS MT Submit Report</span></td><td colspan="1" class="confluenceTd"><span>SM-TL<span>(carried in mo-ForwardSM Ack)</span></span></td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m46-2</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">SMS MT Status Report</span></td><td colspan="1" class="confluenceTd"><span>SM-TL<span>&nbsp;</span><span>(carried in mo-ForwardSM Ack)</span></span></td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m46-4</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">SMS MO Deliver Report</span></td><td colspan="1" class="confluenceTd"><span>SM-TL<span>&nbsp;</span><span>(carried in mt-ForwardSM Ack)</span></span></td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m46-5</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">SMS MO Submit</span></td><td colspan="1" class="confluenceTd"><span>SM-TL (carried in mo-ForwardSM)</span></td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m46-6</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">SMS MO Command</span></td><td colspan="1" class="confluenceTd"><span>SM-TL</span></td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m47</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">Report SM-Delivery Status</span></td><td colspan="1" class="confluenceTd">Short message alert MAP procedure</td></tr><tr role="row"><td class="confluenceTd">m56</td><td colspan="1" class="confluenceTd">Send Authentication Info</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m57</td><td colspan="1" class="confluenceTd">Restore Data</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m59</td><td colspan="1" class="confluenceTd">Process Unstructured SS-Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m63</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">Inform Service Center</span></td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m64</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">Alert Service Center</span></td><td colspan="1" class="confluenceTd"><span>Short message alert MAP procedure</span></td></tr><tr role="row"><td class="confluenceTd"><span style="color: rgb(0,0,255);">m66</span></td><td colspan="1" class="confluenceTd"><span style="color: rgb(0,0,255);">Ready for SM</span></td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m67</td><td colspan="1" class="confluenceTd">Purge MS</td><td colspan="1" class="confluenceTd">No available currently</td></tr><tr role="row"><td class="confluenceTd">m70</td><td colspan="1" class="confluenceTd">Provide Subscriber Info</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m71</td><td colspan="1" class="confluenceTd">Any Time Interrogation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">m99</td><td colspan="1" class="confluenceTd">Duplicated TcapId For Sms</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l1-0</td><td colspan="1" class="confluenceTd">Create Session OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l1-1</td><td colspan="1" class="confluenceTd">Create Session SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l1-2</td><td colspan="1" class="confluenceTd">Create Session Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l1-3</td><td colspan="1" class="confluenceTd">Create Session Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l2-0</td><td colspan="1" class="confluenceTd">Modify Bearer OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l2-1</td><td colspan="1" class="confluenceTd">Modify Bearer SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l2-2</td><td colspan="1" class="confluenceTd">Modify Bearer Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l2-3</td><td colspan="1" class="confluenceTd">Modify Bearer Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l3-0</td><td colspan="1" class="confluenceTd">Release Access Bearers OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l3-1</td><td colspan="1" class="confluenceTd">Release Access Bearers SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l3-2</td><td colspan="1" class="confluenceTd">Release Access Bearers Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l3-3</td><td colspan="1" class="confluenceTd">Release Access Bearers Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l4-0</td><td colspan="1" class="confluenceTd">Delete Session OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l4-1</td><td colspan="1" class="confluenceTd">Delete Session SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l4-2</td><td colspan="1" class="confluenceTd">Delete Session Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l4-3</td><td colspan="1" class="confluenceTd">Delete Session Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l5-0</td><td colspan="1" class="confluenceTd">Create Bearer OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l5-1</td><td colspan="1" class="confluenceTd">Create Bearer SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l5-2</td><td colspan="1" class="confluenceTd">Create Bearer Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l5-3</td><td colspan="1" class="confluenceTd">Create Bearer Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l6-0</td><td colspan="1" class="confluenceTd">Update Bearer OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l6-1</td><td colspan="1" class="confluenceTd">Update Bearer SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l6-2</td><td colspan="1" class="confluenceTd">Update Bearer Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l6-3</td><td colspan="1" class="confluenceTd">Update Bearer Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l7-0</td><td colspan="1" class="confluenceTd">Delete Bearer Request OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l7-1</td><td colspan="1" class="confluenceTd">Delete Bearer Request SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l7-2</td><td colspan="1" class="confluenceTd">Delete Bearer Request Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l7-3</td><td colspan="1" class="confluenceTd">Delete Bearer Request Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l8-0</td><td colspan="1" class="confluenceTd">Downlink Data Notification OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l8-1</td><td colspan="1" class="confluenceTd">Downlink Data Notification SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l8-2</td><td colspan="1" class="confluenceTd">Downlink Data Notification Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l8-3</td><td colspan="1" class="confluenceTd">Downlink Data Notification Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l9-0</td><td colspan="1" class="confluenceTd">Downlink Data Notification Failure OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l9-1</td><td colspan="1" class="confluenceTd">Downlink Data Notification Failure SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l9-2</td><td colspan="1" class="confluenceTd">Downlink Data Notification Failure Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l9-3</td><td colspan="1" class="confluenceTd">Downlink Data Notification Failure Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l10-0</td><td colspan="1" class="confluenceTd">Bearer Resource Failure OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l10-1</td><td colspan="1" class="confluenceTd">Bearer Resource Failure SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l10-2</td><td colspan="1" class="confluenceTd">Bearer Resource Failure Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l10-3</td><td colspan="1" class="confluenceTd">Bearer Resource Failure Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l11-0</td><td colspan="1" class="confluenceTd">Modify Bearer Failure OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l11-1</td><td colspan="1" class="confluenceTd">Modify Bearer Failure SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l11-2</td><td colspan="1" class="confluenceTd">Modify Bearer Failure Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l11-3</td><td colspan="1" class="confluenceTd">Modify Bearer Failure Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l12-0</td><td colspan="1" class="confluenceTd">Delete Bearer Failure OK</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l12-1</td><td colspan="1" class="confluenceTd">Delete Bearer Failure SM Abort</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l12-2</td><td colspan="1" class="confluenceTd">Delete Bearer Failure Error</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l12-3</td><td colspan="1" class="confluenceTd">Delete Bearer Failure Timeout</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">l42</td><td colspan="1" class="confluenceTd">Throughput Data</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d300</td><td colspan="1" class="confluenceTd">User Authorization Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d300-0</td><td colspan="1" class="confluenceTd">User Authorization Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d300-1</td><td colspan="1" class="confluenceTd">User Authorization Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d301</td><td colspan="1" class="confluenceTd">Server Assignment Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d301-0</td><td colspan="1" class="confluenceTd">Server Assignment Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d301-1</td><td colspan="1" class="confluenceTd">Server Assignment Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d302</td><td colspan="1" class="confluenceTd">Location Info Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d302-0</td><td colspan="1" class="confluenceTd">Location Info Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d302-1</td><td colspan="1" class="confluenceTd">Location Info Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d303</td><td colspan="1" class="confluenceTd">Multimedia Auth Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d303-0</td><td colspan="1" class="confluenceTd">Multimedia Auth Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d303-1</td><td colspan="1" class="confluenceTd">Multimedia Auth Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d304</td><td colspan="1" class="confluenceTd">Registration Termination Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d304-0</td><td colspan="1" class="confluenceTd">Registration Termination Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d304-1</td><td colspan="1" class="confluenceTd">Registration Termination Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d305</td><td colspan="1" class="confluenceTd">Push Profile Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d305-0</td><td colspan="1" class="confluenceTd">Push Profile Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d305-1</td><td colspan="1" class="confluenceTd">Push Profile Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d306</td><td colspan="1" class="confluenceTd">User Data Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d306-0</td><td colspan="1" class="confluenceTd">User Data Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d306-1</td><td colspan="1" class="confluenceTd">User Data Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d307</td><td colspan="1" class="confluenceTd">Profile Update Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d307-0</td><td colspan="1" class="confluenceTd">Profile Update Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d307-1</td><td colspan="1" class="confluenceTd">Profile Update Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d308</td><td colspan="1" class="confluenceTd">Subscribe Notifications Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d308-0</td><td colspan="1" class="confluenceTd">Subscribe Notifications Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d308-1</td><td colspan="1" class="confluenceTd">Subscribe Notifications Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d316</td><td colspan="1" class="confluenceTd">Update Location Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d316-0</td><td colspan="1" class="confluenceTd">Update Location Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d316-1</td><td colspan="1" class="confluenceTd">Update Location Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d317</td><td colspan="1" class="confluenceTd">Cancel Location Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d317-0</td><td colspan="1" class="confluenceTd">Cancel Location Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d317-1</td><td colspan="1" class="confluenceTd">Cancel Location Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d318</td><td colspan="1" class="confluenceTd">Authentication Information Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d318-0</td><td colspan="1" class="confluenceTd">Authentication Information Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d318-1</td><td colspan="1" class="confluenceTd">Authentication Information Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d319</td><td colspan="1" class="confluenceTd">Insert Subscriber Data Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d319-0</td><td colspan="1" class="confluenceTd">Insert Subscriber Data Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d319-1</td><td colspan="1" class="confluenceTd">Insert Subscriber Data Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d320</td><td colspan="1" class="confluenceTd">Delete Subscriber Data Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d320-0</td><td colspan="1" class="confluenceTd">Delete Subscriber Data Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d320-1</td><td colspan="1" class="confluenceTd">Delete Subscriber Data Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d321</td><td colspan="1" class="confluenceTd">Purge UE Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d321-0</td><td colspan="1" class="confluenceTd">Purge UE Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d321-1</td><td colspan="1" class="confluenceTd">Purge UE Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d322</td><td colspan="1" class="confluenceTd">Reset Mobile Station Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d322-0</td><td colspan="1" class="confluenceTd">Reset Mobile Station Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d322-1</td><td colspan="1" class="confluenceTd">Reset Mobile Station Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d323</td><td colspan="1" class="confluenceTd">Notify Home Subscriber Server Request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d323-0</td><td colspan="1" class="confluenceTd">Notify Home Subscriber Server Success</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">d323-1</td><td colspan="1" class="confluenceTd">Notify Home Subscriber Server Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">x42-0</td><td colspan="1" class="confluenceTd">Change notification</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">x42-2</td><td colspan="1" class="confluenceTd">Bearer notification</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">x42-4</td><td colspan="1" class="confluenceTd">Session deletion</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr></tbody></table>
+
+        occurred_at:
+          type: string
+          format: date-time
+          description: The time at which an activity on the subscription was recorded (RFC 3339 date-time)
+      example:
+        imsi: '238208000000001'
+        id: 'WOh6LIABUqU6IY0JSVLK'
+        code: 'm46-0'
+        occurred_at: '2019-06-27T15:47:03.000Z'
+    Event:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ListEvent'
+      properties:
+        rat_type:
+          type: integer
+          format: int32
+          description: |
+
+            Radio Access Technology (RAT) type values.
+
+            <table class="relative-table wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col style="width: 104.0px;"><col style="width: 244.0px;"><col style="width: 271.0px;"></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event type: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">RAT Type</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event description: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Description</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="2" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Comment: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Comment</div></th></tr></thead><tbody aria-live="polite" aria-relevant="all"><tr role="row"><td class="confluenceTd">0</td><td class="confluenceTd">reserved</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">1</td><td class="confluenceTd">UTRAN</td><td class="confluenceTd">3G</td></tr><tr role="row"><td class="confluenceTd">2</td><td class="confluenceTd">GERAN</td><td class="confluenceTd">2G</td></tr><tr role="row"><td colspan="1" class="confluenceTd">3</td><td colspan="1" class="confluenceTd">WLAN</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">4</td><td colspan="1" class="confluenceTd">GAN</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">5</td><td colspan="1" class="confluenceTd">HSPA Evolution</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">6</td><td colspan="1" class="confluenceTd">EUTRAN</td><td colspan="1" class="confluenceTd">LTE/4G</td></tr><tr role="row"><td colspan="1" class="confluenceTd">7</td><td colspan="1" class="confluenceTd">Virtual</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">8-255</td><td colspan="1" class="confluenceTd">spare</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr></tbody></table>
+
+        visited_nw:
+          type: string
+          description: Visited mobile network.
+        imei:
+          type: string
+          description: |
+
+            Device identity.
+
+            For IMEISV, the IMEI field include first 14 digit decimal and CD field, ignoring the SVN digits. For the detail about CD field calculation, please refer to https://www.etsi.org/deliver/etsi_ts/123000_123099/123003/16.06.00_60/ts_123003v160600p.pdf Annex B
+        lac:
+          type: string
+          description: |
+
+            Location area code.
+
+            LAC field is also used to store TAC (Tracking Area Code) in 4G case.
+        lai:
+          type: string
+          description: Location area identifier.
+        ggsn_ip:
+          type: string
+          description: |
+
+            IP of the Gateway GPRS support node.
+
+            Follow raw events might include this field:
+
+            l2-0,l42,g1-0,g2-0,l1-0,l4-0,g4-0,l6-0,l7-0,g4-3,g1-3,g2-3,l1-3,g6-0,l2-3,l2-2,l7-3,l6-3,g6-3,l6-2,l4-2,l11-0,l4-3,l7-2,g4-1,l1-2,g6-1
+        sgsn_ip:
+          type: string
+          description: |
+
+            IP of the Serving GPRS support node.
+
+            Follow raw events might include this field:
+
+            l42,g1-0,g2-0,g4-0,g4-3,g1-3,g2-3,g6-0,g6-3,g4-1,g6-1
+        apn:
+          type: string
+          description: Access point name.
+        cell_id:
+          type: string
+          description: Identity of accessing cell.
+        destination_msisdn:
+          type: string
+          description: |
+            Destination mobile subscription.
+
+            The destination_msisdn field in SMS MT (m46-0) is empty. Could get the info by IMSI field from "Subscription Search API".
+        source_msisdn:
+          type: string
+          description: Source mobile subscription.
+        enterprise_id:
+          type: string
+          description: Internal identity of the enterprise.
+        gtp_cause:
+          type: string
+          description: |
+
+            GTP cause v{0,1} from the analytics records - GPRS.
+
+            <table class="relative-table wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col style="width: 104.0px;"><col style="width: 244.0px;"><col style="width: 271.0px;"></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event type: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">GTP cause v{0,1}</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event description: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Description</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="2" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Comment: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Comment</div></th></tr></thead><tbody aria-live="polite" aria-relevant="all" cellspacing="3"><tr role="row"><td class="confluenceTd">-1</td><td class="confluenceTd">UNKNOWN</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">0</td><td class="confluenceTd">Request IMSI</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">1</td><td class="confluenceTd">Request IMEI</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">2 </td><td class="confluenceTd">Request IMSI and IMEI</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">3</td><td colspan="1" class="confluenceTd">No identity needed</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">4</td><td colspan="1" class="confluenceTd">MS Refuses</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">5</td><td colspan="1" class="confluenceTd">MS is not GPRS Responding</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">6</td><td colspan="1" class="confluenceTd">Reactivation Requested</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">7</td><td colspan="1" class="confluenceTd">PDP address inactivity timer expires</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">8</td><td colspan="1" class="confluenceTd">Network Failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">9</td><td colspan="1" class="confluenceTd">QoS parameter mismatch</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">10-48</td><td colspan="1" class="confluenceTd">For future use</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">49-63</td><td colspan="1" class="confluenceTd">Cause values reserved for GPRS charging protocol use</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">64-127</td><td colspan="1" class="confluenceTd">For future use</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">128</td><td colspan="1" class="confluenceTd">Request accepted</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">129</td><td colspan="1" class="confluenceTd">New PDP type due to network preference</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">130</td><td colspan="1" class="confluenceTd">New PDP type due to single address bearer only</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">131-176</td><td colspan="1" class="confluenceTd">For future use</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">177-191</td><td colspan="1" class="confluenceTd">Cause values reserved for GPRS charging protocol use</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">192</td><td colspan="1" class="confluenceTd">Non-existent</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">193</td><td colspan="1" class="confluenceTd">Invalid message format</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">194</td><td colspan="1" class="confluenceTd">IMSI/IMEI not known</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">195</td><td colspan="1" class="confluenceTd">MS is GPRS Detached</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">196</td><td colspan="1" class="confluenceTd">MS is not GPRS Responding</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">197</td><td colspan="1" class="confluenceTd">MS Refuses</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">198</td><td colspan="1" class="confluenceTd">Version not supported</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">199</td><td colspan="1" class="confluenceTd">No resources available</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">200</td><td colspan="1" class="confluenceTd">Service not supported</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">201</td><td colspan="1" class="confluenceTd">Mandatory IE incorrect</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">202</td><td colspan="1" class="confluenceTd">Mandatory IE missing</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">203</td><td colspan="1" class="confluenceTd">Optional IE incorrect</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">204</td><td colspan="1" class="confluenceTd">System failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">205</td><td colspan="1" class="confluenceTd">Roaming restriction</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">206</td><td colspan="1" class="confluenceTd">P-TMSI Signature mismatch</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">207</td><td colspan="1" class="confluenceTd">GPRS connection suspended</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">208</td><td colspan="1" class="confluenceTd">Authentication failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">209</td><td colspan="1" class="confluenceTd">User authentication failed</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">210</td><td colspan="1" class="confluenceTd">Context not found</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">211</td><td colspan="1" class="confluenceTd">All dynamic PDP addresses are occupied</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">212</td><td colspan="1" class="confluenceTd">No memory is available</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">213</td><td colspan="1" class="confluenceTd">Relocation failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">214</td><td colspan="1" class="confluenceTd">Unknown mandatory extension header</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">215</td><td colspan="1" class="confluenceTd">Semantic error in the TFT operation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">216</td><td colspan="1" class="confluenceTd">Syntactic error in the TFT operation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">217</td><td colspan="1" class="confluenceTd">Semantic errors in packet filter(s)</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">218</td><td colspan="1" class="confluenceTd">Syntactic errors in packet filter(s)</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">219</td><td colspan="1" class="confluenceTd">Missing or unknown APN</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">220</td><td colspan="1" class="confluenceTd">Unknown PDP addressor PDP type</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">221</td><td colspan="1" class="confluenceTd">PDP context without TFT already activated</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">222</td><td colspan="1" class="confluenceTd">APN accessdenied – no subscription</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">223</td><td colspan="1" class="confluenceTd">APN Restriction type incompatibility with currently active PDP Contexts</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">224</td><td colspan="1" class="confluenceTd">MS MBMS Capabilities Insufficient</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">225</td><td colspan="1" class="confluenceTd">Invalid Correlation-ID</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">226</td><td colspan="1" class="confluenceTd">MBMS Bearer Context Superseded</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">227</td><td colspan="1" class="confluenceTd">Bearer Control Mode violation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">228</td><td colspan="1" class="confluenceTd">Collision with network initiated request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">229</td><td colspan="1" class="confluenceTd">APN Congestion</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">230</td><td colspan="1" class="confluenceTd">Bearer handling not supported</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">231</td><td colspan="1" class="confluenceTd">Target access restricted for the subscriber</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">232</td><td colspan="1" class="confluenceTd">UE is temporarily not reachable due to power saving</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">233</td><td colspan="1" class="confluenceTd">Relocation failure due to NAS message redirection</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">234-240</td><td colspan="1" class="confluenceTd">For future use</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">241-255</td><td colspan="1" class="confluenceTd">Cause values reserved for GPRS charging protocol use</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr></tbody></table>
+
+            GTP cause v2 from the analytics records - LTE.
+
+            <table class="relative-table wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col style="width: 104.0px;"><col style="width: 244.0px;"><col style="width: 271.0px;"></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event type: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">GTP cause v2</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event description: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Description</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="2" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Comment: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Comment</div></th></tr></thead><tbody aria-live="polite" aria-relevant="all"><tr role="row"><td class="confluenceTd">-1</td><td class="confluenceTd">UNKNOWN</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">0</td><td class="confluenceTd">Reserved</td><td class="confluenceTd">Shall not be sent and if received the Cause shall be treated as an invalid IE</td></tr><tr role="row"><td class="confluenceTd">1</td><td class="confluenceTd">Reserved</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">2 </td><td class="confluenceTd">Local Detach</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">3</td><td colspan="1" class="confluenceTd">Complete Detach</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">4</td><td colspan="1" class="confluenceTd">RAT changed from 3GPP to Non-3GPP</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">5</td><td colspan="1" class="confluenceTd">ISR deactivation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">6</td><td colspan="1" class="confluenceTd">Error Indication received from RNC/eNodeB/S4-SGSN</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">7</td><td colspan="1" class="confluenceTd">IMSI Detach Only</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">8</td><td colspan="1" class="confluenceTd">Reactivation Requested</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">9</td><td colspan="1" class="confluenceTd">PDN reconnection to this APN disallowed</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">10</td><td colspan="1" class="confluenceTd">Access changed from Non-3GPP to 3GPP</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">11</td><td colspan="1" class="confluenceTd">PDN connection inactivity timer expires</td><td colspan="1" class="confluenceTd">Used by the PGW in Delete Bearer Request(s) to indicate that all the bearer(s) for the emergency PDN connection are deleted upon the inactivity timer expiry</td></tr><tr role="row"><td colspan="1" class="confluenceTd">12</td><td colspan="1" class="confluenceTd">PGW not responding</td><td colspan="1" class="confluenceTd">Used by the SGW in PGW Restart Notification to indicate that the peer PGW has failed and not restarted</td></tr><tr role="row"><td colspan="1" class="confluenceTd">13</td><td colspan="1" class="confluenceTd">Network Failure</td><td colspan="1" class="confluenceTd">Used by the SGSN or MME in the Delete Session Request to indicate that the message is sent due to a network problem</td></tr><tr role="row"><td colspan="1" class="confluenceTd">14</td><td colspan="1" class="confluenceTd">QoS parameter mismatch</td><td colspan="1" class="confluenceTd">Used by the SGSN or MME in the Delete Session Request to indicate that the PDN connection can not be established due to a QoS parameter mismatch</td></tr><tr role="row"><td colspan="1" class="confluenceTd">15</td><td colspan="1" class="confluenceTd">Spare</td><td colspan="1" class="confluenceTd">This value range shall be used by Cause values in an initial/request message</td></tr><tr role="row"><td colspan="1" class="confluenceTd">16</td><td colspan="1" class="confluenceTd">Request accepted</td><td colspan="1" class="confluenceTd">Returned when the GTPv2 entity has accepted a control plane request</td></tr><tr role="row"><td colspan="1" class="confluenceTd">17</td><td colspan="1" class="confluenceTd">Request accepted partially</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">18</td><td colspan="1" class="confluenceTd">New PDN type due to network preference</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">19</td><td colspan="1" class="confluenceTd">New PDN type due to single address bearer only</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">20-63</td><td colspan="1" class="confluenceTd">Spare</td><td colspan="1" class="confluenceTd">This value range shall be used by Cause values in an acceptance response/triggered message</td></tr><tr role="row"><td colspan="1" class="confluenceTd">64</td><td colspan="1" class="confluenceTd">Context Not Found</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">65</td><td colspan="1" class="confluenceTd">Invalid Message Format</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">66</td><td colspan="1" class="confluenceTd">Version not supported by next peer</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">67</td><td colspan="1" class="confluenceTd">Invalid length</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">68</td><td colspan="1" class="confluenceTd">Service not supported</td><td colspan="1" class="confluenceTd">Used by the GTP entity when it receives a message, which corresponds to a feature or a service which is not supported by the node</td></tr><tr role="row"><td colspan="1" class="confluenceTd">69</td><td colspan="1" class="confluenceTd">Mandatory IE incorrect</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">70</td><td colspan="1" class="confluenceTd">Mandatory IE missing</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">71</td><td colspan="1" class="confluenceTd">Shall not be used</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">72</td><td colspan="1" class="confluenceTd">System failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">73</td><td colspan="1" class="confluenceTd">No resources available</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">74</td><td colspan="1" class="confluenceTd">Semantic error in the TFT operation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">75</td><td colspan="1" class="confluenceTd">Syntactic error in the TFT operation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">76</td><td colspan="1" class="confluenceTd">Semantic errors in packet filter(s)</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">77</td><td colspan="1" class="confluenceTd">Syntactic errors in packet filter(s)</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">78</td><td colspan="1" class="confluenceTd">Missing or unknown APN</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">79</td><td colspan="1" class="confluenceTd">Shall not be used</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">80</td><td colspan="1" class="confluenceTd">GRE key not found</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">81</td><td colspan="1" class="confluenceTd">Relocation failure</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">82</td><td colspan="1" class="confluenceTd">Denied in RAT</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">83</td><td colspan="1" class="confluenceTd">Preferred PDN type not supported</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">84</td><td colspan="1" class="confluenceTd">All dynamic addresses are occupied</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">85</td><td colspan="1" class="confluenceTd">UE context without TFT already activated</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">86</td><td colspan="1" class="confluenceTd">Protocol type not supported</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">87</td><td colspan="1" class="confluenceTd">UE not responding</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">88</td><td colspan="1" class="confluenceTd">UE refuses</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">89</td><td colspan="1" class="confluenceTd">Service denied</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">90</td><td colspan="1" class="confluenceTd">Unable to page UE</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">91</td><td colspan="1" class="confluenceTd">No memory available</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">92</td><td colspan="1" class="confluenceTd">User authentication failed</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">93</td><td colspan="1" class="confluenceTd">APN access denied - no subscription</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">94</td><td colspan="1" class="confluenceTd">Request rejected (reason not specified)</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">95</td><td colspan="1" class="confluenceTd">P-TMSI Signature mismatch</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">96</td><td colspan="1" class="confluenceTd">IMSI/IMEI not known</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">97</td><td colspan="1" class="confluenceTd">Semantic error in the TAD operation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">98</td><td colspan="1" class="confluenceTd">Syntactic error in the TAD operation</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">99</td><td colspan="1" class="confluenceTd">Shall not be used</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">100</td><td colspan="1" class="confluenceTd">Remote peer not responding</td><td colspan="1" class="confluenceTd">Used by the SGW for the messages spanning through two interfaces</td></tr><tr role="row"><td colspan="1" class="confluenceTd">101</td><td colspan="1" class="confluenceTd">Collision with network initiated request</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">102</td><td colspan="1" class="confluenceTd">Unable to page UE due to Suspension</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">103</td><td colspan="1" class="confluenceTd">Conditional IE missing</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">104</td><td colspan="1" class="confluenceTd">APN Restriction type incompatible with active PDN connection</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">105</td><td colspan="1" class="confluenceTd">Invalid overall length of the triggered response message and a piggybacked initial message</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">106</td><td colspan="1" class="confluenceTd">Data forwarding not supported</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">107</td><td colspan="1" class="confluenceTd">Invalid reply from remote peer</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">108</td><td colspan="1" class="confluenceTd">Fallback to GTPv1</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">109</td><td colspan="1" class="confluenceTd">Invalid peer</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">110</td><td colspan="1" class="confluenceTd">Temporarily rejected due to handover/TAU/RAU procedure in progress</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">111</td><td colspan="1" class="confluenceTd">Modifications not limited to S1-U bearers</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">112</td><td colspan="1" class="confluenceTd">Request rejected for a PMIPv6 reason</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">113</td><td colspan="1" class="confluenceTd">APN Congestion</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">114</td><td colspan="1" class="confluenceTd">Bearer handling not supported</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">115</td><td colspan="1" class="confluenceTd">UE already re-attached</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">116</td><td colspan="1" class="confluenceTd">Multiple PDN connections for a given APN not allowed</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">117</td><td colspan="1" class="confluenceTd">Target access restricted for the subscriber</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">118</td><td colspan="1" class="confluenceTd">Shall not be used</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">119</td><td colspan="1" class="confluenceTd">MME/SGSN refuses due to VPLMN Policy</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">120</td><td colspan="1" class="confluenceTd">GTP-C Entity Congestion</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">121</td><td colspan="1" class="confluenceTd">Late Overlapping Request </td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">122</td><td colspan="1" class="confluenceTd">Timed out Request </td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">123</td><td colspan="1" class="confluenceTd">UE is temporarily not reachable due to power saving</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">124</td><td colspan="1" class="confluenceTd">Relocation failure due to NAS message redirection</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">125</td><td colspan="1" class="confluenceTd">UE not authorised by OCS or external AAA Server</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">126</td><td colspan="1" class="confluenceTd">Multiple accesses to a PDN connection not allowed</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">127</td><td colspan="1" class="confluenceTd">Request rejected due to UE capability</td><td colspan="1" class="confluenceTd">&nbsp;</td></tr><tr role="row"><td colspan="1" class="confluenceTd">128-239</td><td colspan="1" class="confluenceTd">Spare</td><td colspan="1" class="confluenceTd">For future use in a triggered/response message</td></tr><tr role="row"><td colspan="1" class="confluenceTd">240-255</td><td colspan="1" class="confluenceTd">Spare</td><td colspan="1" class="confluenceTd">For future use in an initial/request message</td></tr></tbody></table>
+
+        map_errorcode:
+          type: integer
+          format: int32
+          description: |
+
+            Map error code from the analytics records.
+
+            <table class="wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col><col><col></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="map error code: No sort applied, activate to apply an ascending sort"><div class="tablesorter-header-inner">map error code</div></th><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="map error code description: No sort applied, activate to apply an ascending sort"><div class="tablesorter-header-inner">Description</div></th><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="2" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label=": No sort applied, activate to apply an ascending sort"><div class="tablesorter-header-inner"><br></div></th></tr></thead><tbody aria-live="polite" aria-relevant="all"><tr role="row"><td class="confluenceTd">0</td><td class="confluenceTd">No Error</td><td class="confluenceTd"><br></td></tr><tr role="row"><td class="confluenceTd">1</td><td class="confluenceTd">Unknown Subscriber</td><td class="confluenceTd"><br></td></tr><tr role="row"><td class="confluenceTd">3</td><td class="confluenceTd">Unknown MSC</td><td class="confluenceTd"><br></td></tr><tr role="row"><td class="confluenceTd">5</td><td class="confluenceTd">Unidentified Subscriber</td><td class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">6</td><td colspan="1" class="confluenceTd">Absent Subscriber for SM</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">7</td><td colspan="1" class="confluenceTd">Unknown Equipment</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">8</td><td colspan="1" class="confluenceTd">Roaming Not Allowed</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">9</td><td colspan="1" class="confluenceTd">Illegal Subscriber</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">10</td><td colspan="1" class="confluenceTd">Bearer Service Not Provisione</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">11</td><td colspan="1" class="confluenceTd">Teleservice Not Provisioned</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">12</td><td colspan="1" class="confluenceTd">Illegal Equipment</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">13</td><td colspan="1" class="confluenceTd">Call Barred</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">14</td><td colspan="1" class="confluenceTd">Forwarding Violation</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">15</td><td colspan="1" class="confluenceTd">CUG Reject</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">16</td><td colspan="1" class="confluenceTd">Illegal SS Operation</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">17</td><td colspan="1" class="confluenceTd">SS Error Status</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">18</td><td colspan="1" class="confluenceTd">SS Not Available</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">19</td><td colspan="1" class="confluenceTd">SS Subscription Violation</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">20</td><td colspan="1" class="confluenceTd">SS Incompatibility</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">21</td><td colspan="1" class="confluenceTd">Facility Not Supported</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">22</td><td colspan="1" class="confluenceTd">Ongoing GroupCall</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">25</td><td colspan="1" class="confluenceTd">No Handover Number Available</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">26</td><td colspan="1" class="confluenceTd">Subsequent Handover Failure</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">27</td><td colspan="1" class="confluenceTd">Absent Subscriber</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">28</td><td colspan="1" class="confluenceTd">Incompatible Terminal</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">29</td><td colspan="1" class="confluenceTd">ShortTerm Denial</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">30</td><td colspan="1" class="confluenceTd">LongTerm Denial</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">31</td><td colspan="1" class="confluenceTd">Subscriber Busy For MT SMS</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">32</td><td colspan="1" class="confluenceTd">SM Delivery Failure</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">33</td><td colspan="1" class="confluenceTd">Message Waiting List Full</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">34</td><td colspan="1" class="confluenceTd">System failure</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">35</td><td colspan="1" class="confluenceTd">Data Missing</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">36</td><td colspan="1" class="confluenceTd">Unexpected Data Value</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">37</td><td colspan="1" class="confluenceTd">PW Registration Failure</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">38</td><td colspan="1" class="confluenceTd">Negative PW Check</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">39</td><td colspan="1" class="confluenceTd">No Roaming Number Available</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">40</td><td colspan="1" class="confluenceTd">tracingBufferFull</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">42</td><td colspan="1" class="confluenceTd">Target Cell Outside GroupCall</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">43</td><td colspan="1" class="confluenceTd">Number of PW Attempts Violati</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">45</td><td colspan="1" class="confluenceTd">Busy Subscriber</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">46</td><td colspan="1" class="confluenceTd">No Subscriber Reply</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">47</td><td colspan="1" class="confluenceTd">Forwarding Failed</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">48</td><td colspan="1" class="confluenceTd">OR Not Allowed</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">49</td><td colspan="1" class="confluenceTd">ATI Not Allowed</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">50</td><td colspan="1" class="confluenceTd">No GroupCall Number Available</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">51</td><td colspan="1" class="confluenceTd">Resource Limitation</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">52</td><td colspan="1" class="confluenceTd">Unauthorized Requesting Network</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">53</td><td colspan="1" class="confluenceTd">Unauthorized LCS Client</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">54</td><td colspan="1" class="confluenceTd">Position Method Failure</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">58</td><td colspan="1" class="confluenceTd">Unknown or Unreachable LCS Cl</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">59</td><td colspan="1" class="confluenceTd">MM Event Not Supported</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">60</td><td colspan="1" class="confluenceTd">ATSI Not Allowed</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">61</td><td colspan="1" class="confluenceTd">ATM Not Allowed</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">62</td><td colspan="1" class="confluenceTd">Information Not Available</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">71</td><td colspan="1" class="confluenceTd">Unknown Alphabet</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">72</td><td colspan="1" class="confluenceTd">USSD Busy</td><td colspan="1" class="confluenceTd"><br></td></tr><tr role="row"><td colspan="1" class="confluenceTd">144</td><td colspan="1" class="confluenceTd">Number Changed</td><td colspan="1" class="confluenceTd"><br></td></tr></tbody></table>
+
+        map_status:
+          type: string
+          description: |
+
+            Map status from the analytics records.
+
+            <table class="relative-table wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col style="width: 104.0px;"><col style="width: 244.0px;"><col style="width: 271.0px;"></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event type: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">map status</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event description: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Description</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="2" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Comment: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Comment</div></th></tr></thead><tbody aria-live="polite" aria-relevant="all"><tr role="row"><td class="confluenceTd">0</td><td class="confluenceTd">Normal</td><td class="confluenceTd">map_errorcode defines the result of the successfull map signal</td></tr><tr role="row"><td class="confluenceTd">1</td><td class="confluenceTd">Setup</td><td class="confluenceTd">&nbsp;</td></tr><tr role="row"><td class="confluenceTd">3</td><td class="confluenceTd">Timeout</td><td class="confluenceTd">There was a signalling timeout</td></tr><tr role="row"><td colspan="1" class="confluenceTd">4</td><td colspan="1" class="confluenceTd">Abort</td><td colspan="1" class="confluenceTd">An error occurred, causing a signalling abortion</td></tr></tbody></table>
+
+        mcc:
+          type: string
+          description: Mobile country code.
+        mnc:
+          type: string
+          description: Mobile network code.
+        pdprx:
+          type: integer
+          format: int64
+          description: The amount of data received in bytes.
+        pdptx:
+          type: integer
+          format: int64
+          description: The amount of data transmitted in bytes.
+        terminal_ip:
+          type: string
+          description: IP of the device.
+        result_code:
+          type: integer
+          format: int32
+          description: |
+
+            LTE control plane diameter signal.
+
+            <table class="relative-table wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col style="width: 104.0px;"><col style="width: 244.0px;"><col style="width: 271.0px;"></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event type: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Result Code</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event description: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Description</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="2" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Comment: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Comment</div></th></tr></thead><tbody aria-live="polite" aria-relevant="all"><tr role="row"><td class="confluenceTd">0</td><td colspan="1" class="confluenceTd">UNDEFINED</td><td colspan="1" class="confluenceTd">Probably experimental_resultcode is returned, instead of result_code, which is not part of the API.</td></tr><tr role="row"><td class="confluenceTd">1001</td><td colspan="1" class="confluenceTd">DIAMETER_MULTI_ROUND_AUTH</td><td colspan="1" class="confluenceTd">This informational error is returned by a Diameter server to inform the access device that the authentication mechanism being used requires multiple round trips, and a subsequent request needs to be issued in order for access to be granted. </td></tr><tr role="row"><td class="confluenceTd">2001</td><td colspan="1" class="confluenceTd">DIAMETER_SUCCESS</td><td colspan="1" class="confluenceTd">The Request was successfully completed. </td></tr><tr role="row"><td class="confluenceTd">2002</td><td colspan="1" class="confluenceTd">DIAMETER_LIMITED_SUCCESS</td><td colspan="1" class="confluenceTd">When returned, the request was successfully completed, but additional processing is required by the application in order to provide service to the user. </td></tr><tr role="row"><td class="confluenceTd">3001</td><td colspan="1" class="confluenceTd">DIAMETER_COMMAND_UNSUPPORTED</td><td colspan="1" class="confluenceTd">The Request contained a Command-Code that the receiver did not recognize or support. This MUST be used when a Diameter node receives an experimental command that it does not understand. </td></tr><tr role="row"><td class="confluenceTd">3002</td><td colspan="1" class="confluenceTd">DIAMETER_UNABLE_TO_DELIVER</td><td colspan="1" class="confluenceTd">This error is given when Diameter can not deliver the message to the destination, either because no host within the realm supporting the required application was available to process the request, or because Destination-Host AVP was given without the associated Destination-Realm AVP. </td></tr><tr role="row"><td class="confluenceTd">3003</td><td colspan="1" class="confluenceTd">DIAMETER_REALM_NOT_SERVED</td><td colspan="1" class="confluenceTd">The intended realm of the request is not recognized. </td></tr><tr role="row"><td class="confluenceTd">3004</td><td colspan="1" class="confluenceTd">DIAMETER_TOO_BUSY</td><td colspan="1" class="confluenceTd">When returned, a Diameter node SHOULD attempt to send the message to an alternate peer. This error MUST only be used when a specific server is requested, and it cannot provide the requested service. </td></tr><tr role="row"><td class="confluenceTd">3005</td><td colspan="1" class="confluenceTd">DIAMETER_LOOP_DETECTED</td><td colspan="1" class="confluenceTd">An agent detected a loop while trying to get the message to the intended recipient. The message MAY be sent to an alternate peer, if one is available, but the peer reporting the error has identified a configuration problem. </td></tr><tr role="row"><td class="confluenceTd">3006</td><td colspan="1" class="confluenceTd">DIAMETER_REDIRECT_INDICATION</td><td colspan="1" class="confluenceTd">A redirect agent has determined that the request could not be satisfied locally and the initiator of the request should direct the request directly to the server, whose contact information has been added to the response. When set, the Redirect-Host AVP MUST be present. </td></tr><tr role="row"><td class="confluenceTd">3007</td><td colspan="1" class="confluenceTd">DIAMETER_APPLICATION_UNSUPPORTED</td><td colspan="1" class="confluenceTd">A request was sent for an application that is not supported. </td></tr><tr role="row"><td class="confluenceTd">3008</td><td colspan="1" class="confluenceTd">DIAMETER_INVALID_HDR_BITS</td><td colspan="1" class="confluenceTd">A request was received whose bits in the Diameter header were either set to an invalid combination, or to a value that is inconsistent with the command code's definition. </td></tr><tr role="row"><td class="confluenceTd">3009</td><td colspan="1" class="confluenceTd">DIAMETER_INVALID_AVP_BITS</td><td colspan="1" class="confluenceTd">A request was received that included an AVP whose flag bits are set to an unrecognized value, or that is inconsistent with the AVP's definition. </td></tr><tr role="row"><td class="confluenceTd">3010</td><td colspan="1" class="confluenceTd">DIAMETER_UNKNOWN_PEER</td><td colspan="1" class="confluenceTd">A CER was received from an unknown peer. </td></tr><tr role="row"><td class="confluenceTd">4001</td><td colspan="1" class="confluenceTd">DIAMETER_AUTHENTICATION_REJECTED</td><td colspan="1" class="confluenceTd">The authentication process for the user failed, most likely due to an invalid password used by the user. Further attempts MUST only be tried after prompting the user for a new password. </td></tr><tr role="row"><td class="confluenceTd">4002</td><td colspan="1" class="confluenceTd">DIAMETER_OUT_OF_SPACE</td><td colspan="1" class="confluenceTd">A Diameter node received the accounting request but was unable to commit it to stable storage due to a temporary lack of space. </td></tr><tr role="row"><td class="confluenceTd">4003</td><td colspan="1" class="confluenceTd">ELECTION_LOST</td><td colspan="1" class="confluenceTd">The peer has determined that it has lost the election process and has therefore disconnected the transport connection. </td></tr><tr role="row"><td class="confluenceTd">5001</td><td colspan="1" class="confluenceTd">DIAMETER_AVP_UNSUPPORTED</td><td colspan="1" class="confluenceTd">The peer received a message that contained an AVP that is not recognized or supported and was marked with the 'M' (Mandatory) bit. A Diameter message with this error MUST contain one or more Failed-AVP AVPs containing the AVPs that caused the failure. </td></tr><tr role="row"><td class="confluenceTd">5002</td><td colspan="1" class="confluenceTd">DIAMETER_UNKNOWN_SESSION_ID</td><td colspan="1" class="confluenceTd">The request contained an unknown Session-Id. </td></tr><tr role="row"><td class="confluenceTd">5003</td><td colspan="1" class="confluenceTd">DIAMETER_AUTHORIZATION_REJECTED</td><td colspan="1" class="confluenceTd">A request was received for which the user could not be authorized. This error could occur if the service requested is not permitted to the user. </td></tr><tr role="row"><td class="confluenceTd">5004</td><td colspan="1" class="confluenceTd">DIAMETER_INVALID_AVP_VALUE</td><td colspan="1" class="confluenceTd">The request contained an AVP with an invalid value in its data portion. A Diameter message indicating this error MUST include the offending AVPs within a Failed-AVP AVP. </td></tr><tr role="row"><td class="confluenceTd">5005</td><td colspan="1" class="confluenceTd">DIAMETER_MISSING_AVP</td><td colspan="1" class="confluenceTd">The request did not contain an AVP that is required by the Command Code definition. If this value is sent in the Result-Code AVP, a Failed-AVP AVP SHOULD be included in the message. The Failed-AVP AVP MUST contain an example of the missing AVP complete with the Vendor-Id if applicable. The value field of the missing AVP should be of correct minimum length and contain zeroes. </td></tr><tr role="row"><td class="confluenceTd">5006</td><td colspan="1" class="confluenceTd">DIAMETER_RESOURCES_EXCEEDED</td><td colspan="1" class="confluenceTd">A request was received that cannot be authorized because the user has already expended allowed resources. An example of this error condition is when a user that is restricted to one dial-up PPP port attempts to establish a second PPP connection. </td></tr><tr role="row"><td class="confluenceTd">5007</td><td colspan="1" class="confluenceTd">DIAMETER_CONTRADICTING_AVPS</td><td colspan="1" class="confluenceTd">The Home Diameter server has detected AVPs in the request that contradicted each other, and it is not willing to provide service to the user. The Failed-AVP AVP MUST be present, which contain the AVPs that contradicted each other. </td></tr><tr role="row"><td class="confluenceTd">5008</td><td colspan="1" class="confluenceTd">DIAMETER_AVP_NOT_ALLOWED</td><td colspan="1" class="confluenceTd">A message was received with an AVP that MUST NOT be present. The Failed-AVP AVP MUST be included and contain a copy of the offending AVP. </td></tr><tr role="row"><td class="confluenceTd">5009</td><td colspan="1" class="confluenceTd">DIAMETER_AVP_OCCURS_TOO_MANY_TIMES</td><td colspan="1" class="confluenceTd">A message was received that included an AVP that appeared more often than permitted in the message definition. The Failed-AVP AVP MUST be included and contain a copy of the first instance of the offending AVP that exceeded the maximum number of occurrences. </td></tr><tr role="row"><td class="confluenceTd">5010</td><td colspan="1" class="confluenceTd">DIAMETER_NO_COMMON_APPLICATION</td><td colspan="1" class="confluenceTd">This error is returned by a Diameter node that receives a CER whereby no applications are common between the CER sending peer and the CER receiving peer. </td></tr><tr role="row"><td class="confluenceTd">5011</td><td colspan="1" class="confluenceTd">DIAMETER_UNSUPPORTED_VERSION</td><td colspan="1" class="confluenceTd">This error is returned when a request was received, whose version number is unsupported. </td></tr><tr role="row"><td class="confluenceTd">5012</td><td colspan="1" class="confluenceTd">DIAMETER_UNABLE_TO_COMPLY</td><td colspan="1" class="confluenceTd">This error is returned when a request is rejected for unspecified reasons. </td></tr><tr role="row"><td class="confluenceTd">5013</td><td colspan="1" class="confluenceTd">DIAMETER_INVALID_BIT_IN_HEADER</td><td colspan="1" class="confluenceTd">This error is returned when a reserved bit in the Diameter header is set to one (1) or the bits in the Diameter header are set incorrectly. </td></tr><tr role="row"><td class="confluenceTd">5014</td><td colspan="1" class="confluenceTd">DIAMETER_INVALID_AVP_LENGTH</td><td colspan="1" class="confluenceTd">The request contained an AVP with an invalid length. A Diameter message indicating this error MUST include the offending AVPs within a Failed-AVP AVP. </td></tr><tr role="row"><td class="confluenceTd">5015</td><td colspan="1" class="confluenceTd">DIAMETER_INVALID_MESSAGE_LENGTH</td><td colspan="1" class="confluenceTd">This error is returned when a request is received with an invalid message length. </td></tr><tr role="row"><td class="confluenceTd">5016</td><td colspan="1" class="confluenceTd">DIAMETER_INVALID_AVP_BIT_COMBO</td><td colspan="1" class="confluenceTd">The request contained an AVP with which is not allowed to have the given value in the AVP Flags field. A Diameter message indicating this error MUST include the offending AVPs within a Failed-AVP AVP. </td></tr><tr role="row"><td class="confluenceTd">5017</td><td colspan="1" class="confluenceTd">DIAMETER_NO_COMMON_SECURITY</td><td colspan="1" class="confluenceTd">This error is returned when a CER message is received, and there are no common security mechanisms supported between the peers. A Capabilities-Exchange-Answer (CEA) message MUST be returned with the Result-Code AVP set to DIAMETER_NO_COMMON_SECURITY. </td></tr></tbody></table>
+
+        exp_resultcode:
+          type: integer
+          format: int32
+          description: |
+
+            Experimental result codes are controlled in a vendor-specific manner.
+            The present document lists the 3GPP specific Experimental result codes in 3GPP TS 29.230.
+
+            <table class="relative-table wrapped confluenceTable tablesorter tablesorter-default stickyTableHeaders" role="grid" resolved="" style="padding: 0px;"><colgroup><col style="width: 104.0px;" /><col style="width: 244.0px;" /></colgroup><thead class="tableFloatingHeader" style="display: none;"><tr role="row" class="tablesorter-headerRow"><th class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="0" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event type: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Experimental Result Code</div></th><th colspan="1" class="confluenceTh tablesorter-header sortableHeader tablesorter-headerUnSorted" data-column="1" tabindex="0" scope="col" role="columnheader" aria-disabled="false" unselectable="on" aria-sort="none" aria-label="Event description: No sort applied, activate to apply an ascending sort" style="user-select: none;"><div class="tablesorter-header-inner">Description</div></th></tr></thead><tbody aria-live="polite" aria-relevant="all"><tr role="row"><td class="confluenceTd">2001</td><td colspan="1" class="confluenceTd">DIAMETER_FIRST_REGISTRATION</td></tr><tr role="row"><td class="confluenceTd">2002</td><td colspan="1" class="confluenceTd">DIAMETER_SUBSEQUENT_REGISTRATION</td></tr><tr role="row"><td class="confluenceTd">2003</td><td colspan="1" class="confluenceTd">DIAMETER_UNREGISTERED_SERVICE</td></tr><tr role="row"><td class="confluenceTd">2004</td><td colspan="1" class="confluenceTd">DIAMETER_SUCCESS_SERVER_NAME_NOT_STORED</td></tr><tr role="row"><td class="confluenceTd">2005</td><td colspan="1" class="confluenceTd">Deprecated value</td></tr><tr role="row"><td class="confluenceTd">2006 to 2020</td><td colspan="1" class="confluenceTd">reserved for the TS 29.229</td></tr><tr role="row"><td class="confluenceTd">2021</td><td colspan="1" class="confluenceTd">DIAMETER_PDP_CONTEXT_DELETION_INDICATION</td></tr><tr role="row"><td class="confluenceTd">2022 to 2040</td><td colspan="1" class="confluenceTd">reserved for the TS 29.061</td></tr><tr role="row"><td class="confluenceTd">2401 to 2420</td><td colspan="1" class="confluenceTd">reserved for the TS 29.109</td></tr><tr role="row"><td class="confluenceTd">4100</td><td colspan="1" class="confluenceTd">DIAMETER_USER_DATA_NOT_AVAILABLE</td></tr><tr role="row"><td class="confluenceTd">4101</td><td colspan="1" class="confluenceTd">DIAMETER_PRIOR_UPDATE_IN_PROGRESS</td></tr><tr role="row"><td class="confluenceTd">4102 to 4120</td><td colspan="1" class="confluenceTd">reserved for the TS 29.329</td></tr><tr role="row"><td class="confluenceTd">4121</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_OUT_OF_RESOURCES</td></tr><tr role="row"><td class="confluenceTd">4122 to 4140</td><td colspan="1" class="confluenceTd">reserved for the TS 29.061</td></tr><tr role="row"><td class="confluenceTd">4141</td><td colspan="1" class="confluenceTd">DIAMETER_PCC_BEARER_EVENT</td></tr><tr role="row"><td class="confluenceTd">4142</td><td colspan="1" class="confluenceTd">DIAMETER_BEARER_EVENT</td></tr><tr role="row"><td class="confluenceTd">4143 to 4160</td><td colspan="1" class="confluenceTd">reserved for the TS 29.212</td></tr><tr role="row"><td class="confluenceTd">4161 to 4180</td><td colspan="1" class="confluenceTd">reserved for the TS 32.299</td></tr><tr role="row"><td class="confluenceTd">4181</td><td colspan="1" class="confluenceTd">DIAMETER_AUTHENTICATION_DATA_UNAVAILABLE</td></tr><tr role="row"><td class="confluenceTd">4182 to 4200</td><td colspan="1" class="confluenceTd">reserved for the TS 29.272</td></tr><tr role="row"><td class="confluenceTd">5001</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_UNKNOWN</td></tr><tr role="row"><td class="confluenceTd">5002</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_IDENTITIES_DONT_MATCH</td></tr><tr role="row"><td class="confluenceTd">5003</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_IDENTITY_NOT_REGISTERED</td></tr><tr role="row"><td class="confluenceTd">5004</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_ROAMING_NOT_ALLOWED</td></tr><tr role="row"><td class="confluenceTd">5005</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_IDENTITY_ALREADY_REGISTERED</td></tr><tr role="row"><td class="confluenceTd">5006</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_AUTH_SCHEME_NOT_SUPPORTED</td></tr><tr role="row"><td class="confluenceTd">5007</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_IN_ASSIGNMENT_TYPE</td></tr><tr role="row"><td class="confluenceTd">5008</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_TOO_MUCH_DATA</td></tr><tr role="row"><td class="confluenceTd">5009</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_NOT_SUPPORTED_USER_DATA</td></tr><tr role="row"><td class="confluenceTd">5010</td><td colspan="1" class="confluenceTd">unassigned</td></tr><tr role="row"><td class="confluenceTd">5011</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_FEATURE_UNSUPPORTED</td></tr><tr role="row"><td class="confluenceTd">5012 to 5020</td><td colspan="1" class="confluenceTd">reserved for the TS 29.229</td></tr><tr role="row"><td class="confluenceTd">5021 to 5040</td><td colspan="1" class="confluenceTd">reserved for the TS 32.299</td></tr><tr role="row"><td class="confluenceTd">5041</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_NO_WLAN_SUBSCRIPTION</td></tr><tr role="row"><td class="confluenceTd">5042</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_W-APN_UNUSED_BY_USER</td></tr><tr role="row"><td class="confluenceTd">5043</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_NO_ACCESS_INDEPENDENT_SUBSCRIPTION</td></tr><tr role="row"><td class="confluenceTd">5044</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_NO_W-APN_SUBSCRIPTION</td></tr><tr role="row"><td class="confluenceTd">5045</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_UNSUITABLE_NETWORK</td></tr><tr role="row"><td class="confluenceTd">5046 to 5060</td><td colspan="1" class="confluenceTd">reserved for the TS 29.234</td></tr><tr role="row"><td class="confluenceTd">5061</td><td colspan="1" class="confluenceTd">INVALID_SERVICE_INFORMATION</td></tr><tr role="row"><td class="confluenceTd">5062</td><td colspan="1" class="confluenceTd">FILTER_RESTRICTIONS</td></tr><tr role="row"><td class="confluenceTd">5063</td><td colspan="1" class="confluenceTd">REQUESTED_SERVICE_NOT_AUTHORIZED</td></tr><tr role="row"><td class="confluenceTd">5064</td><td colspan="1" class="confluenceTd">DUPLICATED_AF_SESSION</td></tr><tr role="row"><td class="confluenceTd">5065</td><td colspan="1" class="confluenceTd">IP-CAN_SESSION_NOT_AVAILABLE</td></tr><tr role="row"><td class="confluenceTd">5066 to 5080</td><td colspan="1" class="confluenceTd">reserved for TS 29.209, TS 29.211 and TS 29.214 [18]</td></tr><tr role="row"><td class="confluenceTd">5100</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_DATA_NOT_RECOGNIZED</td></tr><tr role="row"><td class="confluenceTd">5101</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_OPERATION_NOT_ALLOWED</td></tr><tr role="row"><td class="confluenceTd">5102</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_DATA_CANNOT_BE_READ</td></tr><tr role="row"><td class="confluenceTd">5103</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_DATA_CANNOT_BE_MODIFIED</td></tr><tr role="row"><td class="confluenceTd">5104</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_DATA_CANNOT_BE_NOTIFIED</td></tr><tr role="row"><td class="confluenceTd">5105</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_TRANSPARENT_DATAOUT_OF_SYNC</td></tr><tr role="row"><td class="confluenceTd">5106</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_SUBS_DATA_ABSENT</td></tr><tr role="row"><td class="confluenceTd">5107</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_NO_SUBSCRIPTION_TO_DATA</td></tr><tr role="row"><td class="confluenceTd">5108</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_DSAI_NOT_AVAILABLE</td></tr><tr role="row"><td class="confluenceTd">5109 to 5119</td><td colspan="1" class="confluenceTd">reserved for the TS 29.329</td></tr><tr role="row"><td class="confluenceTd">5120</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_START_INDICATION</td></tr><tr role="row"><td class="confluenceTd">5121</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_STOP_INDICATION</td></tr><tr role="row"><td class="confluenceTd">5122</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_UNKNOWN_MBMS_BEARER_SERVICE</td></tr><tr role="row"><td class="confluenceTd">5123</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_SERVICE_AREA</td></tr><tr role="row"><td class="confluenceTd">5124 to 5139</td><td colspan="1" class="confluenceTd">reserved for the TS 29.061</td></tr><tr role="row"><td class="confluenceTd">5140</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_INITIAL_PARAMETERS</td></tr><tr role="row"><td class="confluenceTd">5141</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_TRIGGER_EVENT</td></tr><tr role="row"><td class="confluenceTd">5142</td><td colspan="1" class="confluenceTd">DIAMETER_PCC_RULE_EVENT</td></tr><tr role="row"><td class="confluenceTd">5143</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_BEARER_NOT_AUTHORIZED</td></tr><tr role="row"><td class="confluenceTd">5144</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_TRAFFIC_MAPPING_INFO_REJECTED</td></tr><tr role="row"><td class="confluenceTd">5145</td><td colspan="1" class="confluenceTd">DIAMETER_QOS_RULE_EVENT</td></tr><tr role="row"><td class="confluenceTd">5146</td><td colspan="1" class="confluenceTd">reserved</td></tr><tr role="row"><td class="confluenceTd">5147</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_CONFLICTING_REQUEST</td></tr><tr role="row"><td class="confluenceTd">5148 to 5159</td><td colspan="1" class="confluenceTd">reserved for the TS 29.212</td></tr><tr role="row"><td class="confluenceTd">5401</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_IDENTITY_UNKNOWN</td></tr><tr role="row"><td class="confluenceTd">5402</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_NOT_AUTHORIZED</td></tr><tr role="row"><td class="confluenceTd">5403</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_TRANSACTION_IDENTIFIER_INVALID</td></tr><tr role="row"><td class="confluenceTd">5404 to 5419</td><td colspan="1" class="confluenceTd">reserved for the TS 29.109</td></tr><tr role="row"><td class="confluenceTd">5420</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION</td></tr><tr role="row"><td class="confluenceTd">5421</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_RAT_NOT_ALLOWED</td></tr><tr role="row"><td class="confluenceTd">5422</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_EQUIPMENT_UNKNOWN</td></tr><tr role="row"><td class="confluenceTd">5423 to 5449</td><td colspan="1" class="confluenceTd">reserved for the TS 29.272</td></tr><tr role="row"><td class="confluenceTd">5450</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION</td></tr><tr role="row"><td class="confluenceTd">5451</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_USER_NO_APN_SUBSCRIPTION</td></tr><tr role="row"><td class="confluenceTd">5452</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_RAT_TYPE_NOT_ALLOWED</td></tr><tr role="row"><td class="confluenceTd">5453 to 5469</td><td colspan="1" class="confluenceTd">reserved for the TS 29.273</td></tr><tr role="row"><td class="confluenceTd">5470</td><td colspan="1" class="confluenceTd">DIAMETER_ERROR_SUBSESSION</td></tr><tr role="row"><td class="confluenceTd">5471 to 5489</td><td colspan="1" class="confluenceTd">reserved for the TS 29.215</td></tr></tbody></table>
+
+        ipv6_terminal_ip:
+          type: string
+          description: Internet Protocol Version 6 of the device.
+
+      example:
+        rat_type: 1
+        visited_nw: 'France | Orange'
+        imei: '676767676767'
+        lac: '2323'
+        lai: '2323'
+        ggsn_ip: 8.8.8.8
+        sgsn_ip: 8.8.4.4
+        apn: 'ericsson.api.net'
+        cell_id: '34565'
+        destination_msisdn: '0466498215'
+        source_msisdn: '0466498216'
+        enterprise_id: 'ericsson'
+        gtp_cause: 'Requestaccepted'
+        map_errorcode: 1
+        map_status: '0'
+        mcc: '272'
+        mnc: '06'
+        pdprx: 1
+        pdptx: 1
+        terminal_ip: '1.2.3.4'
+        result_code: 1
+        exp_resultcode: 2001
+        ipv6_terminal_ip: 'fd20:05b6:ef60:fd47:e614:85d2:cdf6:93ec'
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          description: |
+            An absolute URI that identifies the problem type. When dereferenced,it SHOULD provide
+            human-readable documentation for the problem type (e.g., using HTML).
+          example: 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.4'
+        title:
+          type: string
+          description: |
+            A short, summary of the problem type. Written in english and readable for engineers (usually not suited
+            for non technical stakeholders and not localized.
+          example: 'Service Unavailable'
+        status:
+          type: integer
+          format: int32
+          description: The HTTP status code generated by the origin server for this occurrence of the problem.
+          minimum: 100
+          maximum: 600
+          exclusiveMaximum: true
+          example: 503
+        detail:
+          type: string
+          description: A human readable explanation specific to this occurrence of the problem.
+          example: 'Connection to database timed out.'
+        instance:
+          type: string
+          description: An absolute URI that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.
+          example: 'https://api.documentation.url/request-id'
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+    400Response:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            title:
+              example: Bad Request
+            status:
+              example: 400
+    401Response:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            title:
+              example: Authentication Failure
+            status:
+              example: 401
+    404Response:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            title:
+              example: No Found
+            status:
+              example: 404
+    500Response:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            title:
+              example: Internal server error
+            status:
+              example: 500
+    503Response:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            title:
+              example: Service Unavailable
+            status:
+              example: 503
+    529Response:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            title:
+              example: Service Overloaded
+            status:
+              example: 529
+  headers:
+    X-RateLimit-Limit-Second:
+      description: The maximum number of requests allowed in a second.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Limit-Minute:
+      description: The maximum number of requests allowed in a minute.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Remaining-Second:
+      description: The number of requests remaining in a second.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Remaining-Minute:
+      description: The number of requests remaining in a minute.
+      schema:
+        type: integer
+        format: int32
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: The resources in the API are protected using the OAuth 2.0 protocol with the password grant flow.
+      flows:
+        password:
+          tokenUrl: /iot/api/auth/token
+          scopes:
+            xdr-raw-api.read: Grant read access to listing signalling events.
+            subscription-signalling-events.read: Grant read access to listing subscription signalling events.

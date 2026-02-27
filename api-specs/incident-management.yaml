@@ -1,0 +1,1208 @@
+---
+openapi: 3.0.2
+info:
+  version: 0.2.2
+  title: 'Incident Management API'
+  description: |
+    #### Copyright 
+    © Aeris Communications, Inc. 2026. All rights reserved. No part of this document may be reproduced in any form without the written permission of the copyright owner.
+    
+    #### Disclaimer
+
+    The contents of this document are subject to revision without notice due to continued progress in methodology, design and manufacturing.
+    Aeris shall have no liability for any error or damage of any kind resulting from the use of this document.
+    
+    #### Trademark List
+
+    All trademarks mentioned herein are the property of their respective owners.These are shown in the document Trademark Information.
+    
+    # Introduction
+    
+    ** This document describes the IoT Accelerator Incidents Management API that provides Incidents resources to retrieve an organization's Incidents information. The Incidents Management API is based on the Representational State Transfer (REST) interface. From this point on, the Incidents Management API is referred to as API in this document.**********
+    
+    ## Scope
+    This document covers the following topics:
+
+    — An overview of the API
+
+    — A detailed description of all operations offered by the API
+
+    ## Prerequisites
+    In this document, it is assumed that the user is familiar with the following:
+
+    — Java Script Object Notation (JSON)
+
+    — Basic understanding of REST web services
+
+    — The [OpenAPI Initiative](https://www.openapis.org/) for the standardized format used in this document.
+
+    ## Related Information
+    The definition and explanation of acronyms and terminology and typographic conventions can be found in the following documents:
+
+    — IoTA Glossary of Terms and Acronyms
+
+    — Typographic Conventions
+
+    # General API Guidelines
+
+    ## Compatibility
+
+    API audience must be prepared for compatible API extensions:
+
+    - Be tolerant with unknown fields in the payload (see also Fowler’s "TolerantReader" post), i.e. ignore new fields but do not eliminate them from payload if needed for subsequent PUT requests.
+    - Be prepared that "x-extensible-enum" return parameter may deliver new values. Either be agnostic or provide default behavior for unknown values.
+    - Be prepared to handle HTTP status codes not explicitly specified in endpoint definitions.
+    - Follow the redirect when the server returns HTTP status 301 Moved Permanently.
+
+    ## Security
+
+    This section describes the security measures in the API. Security measures include authentication, authorization, and encryption.
+
+    ### Authentication and Authorization
+
+    The API uses OAuth2 and OpenID Connect (OIDC) for authentication and authorization.
+
+    All API endpoints require authentication, which is performed by passing a token in the Authorization header in each request, preceded by the word Bearer and a space. See the following example:
+    ```
+    curl -i -X GET "http://<baseURL>/iot/api/ts/incidents" -H "Content-Type: application/json" -H "Authorization: Bearer <TOKEN_GOES_HERE>"
+    
+    ```
+    To fetch the token using e.g. curl, submit the following:
+    ```
+    curl -X POST "https://<baseURL>/iot/api/auth/token" -H "Accept: application/vnd.dcp-v1+json" -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&client_id=<client_id>&username=<username>&password=<password>"
+    ```
+    ### Encryption
+
+    All API requests are encrypted using the HTTPS protocol to grant secure data transfer.
+
+    
+    ## Deprecation
+
+    API deprecation will be reflected in the OpenAPI definition. If a method on a path, a whole path or even a whole API endpoint (multiple paths) should be deprecated, they will be marked as deprecated.
+    During deprecation phase, a Warning header (see RFC 7234 - Warning header) field will be added in the response. The warn-code will be 299 and the warn-text will inform about what is deprecated and when it will be completely removed.
+
+    API audience should not start using a deprecated API.
+
+    API audience is encouraged to monitor for Warning header.
+    
+  x-audience: external-partner
+  x-api-id: 0a3ec0e4-3765-4a4f-8caa-b42ecb8e0d26
+servers:
+  - url: https://iot-api.aeris.com/iot/api/ts
+    description: API server
+    
+paths:
+  '/incidents/search':
+    post:
+      tags:
+        - Incidents
+      summary: Search for incidents
+      description: A list of recent incidents in brief representation.
+      operationId: searchIncidents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentsList'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+
+  '/incidents':
+    get:
+      tags:
+        - Incidents
+      summary: List incidents
+      description: A list of up to 200 recent incidents in brief representation.
+      operationId: listIncidents
+      parameters:
+        - in: query
+          name: limit
+          description: The number of incidents to list.
+          schema:
+            type: string
+            example: '100'
+            minimum: 1
+            maximum: 200
+        - in: query
+          name: organization_ids
+          description: A list of organization ids to filter the incidents.
+          schema:
+            type: array
+            items:
+              type: string
+            example:
+              - '1.2.3'
+              - '1.2.4.*'
+        - in: query
+          name: from
+          description: The starting date yyyy-mm-dd. (RFC 3339 date-time)
+          schema:
+            type: string
+            format: date
+          example: '2020-01-01'
+        - in: query
+          name: to
+          description: The finishing date yyyy-mm-dd. (RFC 3339 date-time)
+          schema:
+            type: string
+            format: date
+          example: '2020-02-02'
+        - in: query
+          name: sort
+          description: Sorting fields and order.
+          schema:
+            type: string
+            x-extensible-enum:
+              - id
+              - created
+              - last_modified_at
+          example: '-last_modified_at,id'
+        - in: query
+          name: q
+          description: Filters
+          schema:
+            type: string
+            example: urgency:HIGH
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentsList'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+    post:
+      tags:
+        - Incidents
+      summary: Create incident
+      description: Create a new incident in Ticketing Service.
+      operationId: createIncident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Incident'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetails'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+            - css_premium_csp_incident_for_operators
+
+  '/incidents/{incident_id}':
+
+    get:      
+      summary: Incident with activities
+      parameters:
+        - name: incident_id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: INC010000000001
+          description: The unique identifier of the requested incident in the Ticketing Service  
+      tags:
+        - Incidents
+      
+      description: This resource contains a complete representation of an incident with all activities and attachment metadata.
+      operationId: getIncident
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetails'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+  '/incidents/{incident_id}/status':
+    parameters:
+      - in: path
+        name: incident_id
+        description: The unique identifier of the requested incident in the Ticketing Service
+        required: true
+        schema:
+          type: string
+          example: INC010000000001
+    get:
+      tags:
+        - Incidents
+      summary: Incident status
+      description: This resource contains the current status of the incident.
+      operationId: getIncidentStatus
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentStatus'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+    put:
+      tags:
+        - Incidents
+      summary: Update incident status
+      description: Putting a new value updates the incident status.
+      operationId: updateIncidentStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentStatus'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentStatus'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_manage_incidents
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+
+  '/incidents/{incident_id}/attachments':
+    parameters:
+      - in: path
+        name: incident_id
+        description: The unique identifier of the requested incident in the Ticketing Service
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Attachments
+      summary: Incident attachments.
+      description: |
+        This resource contains metadata of attachments uploaded when the incident was being created.
+        Incident attachments are actually associated with the initial activity. Maximum number of attachments - 3.
+      operationId: getIncidentAttachments
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentsList'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+    post:
+      tags:
+        - Attachments
+      summary: Upload incident attachment.
+      description: Upload a file to attach to the incident. The attachment is linked to the initial activity.
+      operationId: uploadIncidentAttachment
+      requestBody:
+        required: true
+        content:
+          'multipart/form-data':
+            schema:
+              $ref: '#/components/schemas/FileUpload'
+      responses:
+        '201':
+          description: Created. Response contains metadata of the created attachment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+  '/incidents/{incident_id}/attachments/{attachment_id}':
+    parameters:
+      - in: path
+        name: incident_id
+        description: The unique identifier of the requested incident in the Ticketing Service.
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: attachment_id
+        description: The unique identifier of the attachment.
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Attachments
+      summary: Download incident attachment.
+      description: |
+        This resource contains file content of the attachment identified by attachment_id.
+        Incident attachments are actually associated with the initial activity.Maximum number of attachments - 3.
+      operationId: getIncidentAttachment
+      responses:
+        '200':
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              example: 'Content-Disposition: inline; filename="Image.jpg"'
+              schema:
+                externalDocs:
+                  description: RFC 6266
+                  url: 'https://tools.ietf.org/html/rfc6266'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+  '/incidents/{incident_id}/activities':
+    parameters:
+      - in: path
+        name: incident_id
+        description: The unique identifier of the requested incident in the Ticketing Service
+        required: true
+        schema:
+          type: string
+    # There is no get. Activities are loaded together with incident.
+    post:
+      tags:
+        - Activities
+      summary: Create new activity.
+      operationId: createIncidentActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Activity'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activity'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+  '/incidents/{incident_id}/activities/{activity_id}/status':
+    parameters:
+      - in: path
+        name: incident_id
+        description: The unique identifier of the requested incident in the Ticketing Service.
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: activity_id
+        description: The unique identifier of the activity.
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Activities
+      summary: Get activity status.
+      operationId: getIncidentActivityStatus
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityStatus'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+    put:
+      tags:
+        - Activities
+      summary: Get activity status.
+      operationId: updateIncidentActivityStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityStatus'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityStatus'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_manage_incidents
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+  '/incidents/{incident_id}/activities/{activity_id}/attachments':
+    parameters:
+      - in: path
+        name: incident_id
+        description: The unique identifier of the requested incident in the Ticketing Service.
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: activity_id
+        description: The unique identifier of the activity.
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Attachments
+      summary: Upload incident activity attachment.
+      description: Upload a file to attach to the specified activity.
+      operationId: uploadIncidentActivityAttachment
+      requestBody:
+        required: true
+        content:
+          'multipart/form-data':
+            schema:
+              $ref: '#/components/schemas/FileUpload'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+
+  '/incidents/{incident_id}/activities/{activity_id}/attachments/{attachment_id}':
+    parameters:
+      - in: path
+        name: incident_id
+        description: The unique identifier of the requested incident in the Ticketing Service
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: activity_id
+        description: The unique identifier of the activity.
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: attachment_id
+        description: The unique identifier of the attachment
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Attachments
+      summary: Download incident activity attachment.
+      description: This resource contains file content of the activity attachment.
+      operationId: getIncidentActivityAttachment
+      responses:
+        '200':
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              example: 'Content-Disposition: inline; filename="Image.jpg"'
+              schema:
+                externalDocs:
+                  description: RFC 6266
+                  url: 'https://tools.ietf.org/html/rfc6266'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - cnx_log_incident_2
+            - css_manage_incidents_for_advanced_reseller_enterprise
+  '/incidents/getVIPIncidentCount/{organization_id}':
+    parameters:
+      - in: path
+        name: organization_id
+        description: The unique organization_id
+        required: true
+        schema:
+          type: string
+          example: 3.88
+    get:
+      tags: 
+        - Incidents
+      summary: Get VIP Incident for Premium Operator.
+      description: This resource contains a complete representation of an VIP Incident count for current Month.
+      operationId: getVIPIncidentCount
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VIPIncidentCount'
+        '400':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: The standard http error codes will be given. Usually 400,403,401,404 or 500.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - oauth2:
+            - css_premium_csp_incident_for_operators         
+components:
+  schemas:
+    IncidentsList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          description: A list of brief representations of incidents.
+          type: array
+          items:
+            $ref: '#/components/schemas/Incident'
+
+    Incident:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - id
+            - status
+            - summary
+            - description
+            - category
+            - urgency
+            - impact
+            - priority
+            - enterprise_id
+          properties:
+            id:
+              type: string
+              description: Incident id in Ticketing Service.
+              readOnly: true
+              example: INC010000000001
+            summary:
+              type: string
+              maxLength: 100
+              description: Short description of the incident.
+              example:  An attempt to measure a quantum system
+            description:
+              type: string
+              maxLength: 2000
+              description: Detailed description of the incident.
+              example: >-
+                According to one interpretation, as the result of a measurement, the wave function containing the probability information
+                for a system collapses from a given initial state to a particular eigenstate.
+            category:
+              type: string
+              description: Category of the incident.
+              example: 'Category'
+            urgency:
+              type: string
+              description: The urgency of this incident.
+              x-extensible-enum:
+                - CRITICAL
+                - HIGH
+                - MEDIUM
+                - LOW
+              example: LOW
+            impact:
+              type: string
+              description: The impact of this incident.
+              x-extensible-enum:
+                - EXTENSIVE
+                - SIGNIFICANT
+                - MODERATE
+                - MINOR
+              example: MINOR
+            escalation_related_incident_id:
+              type: string
+              description: The id of the incident that has been escalated into these one.
+              example: INC010000000003
+            forward_related_incident_id:
+              type: string
+              description: The id of the forwarded incident.
+              example: INC010000000002
+            organization_id:
+              type: string
+              description: The id of the organization(enterprise) to which this incident is related.
+              example: '1.2.3'
+            subscription_id:
+              type: string
+              description: Impacted subscriptions. A list of MSISDN or IMSI, separated with commas.Note:Mandatory field when create connectivity category incident.
+              example: '100973000000016,100973000000116'
+            contact_name:
+              type: string
+              description: The name of the person to contact regarding the incident.
+              example: 'Submitter'
+            contact_phone:
+              type: string
+              description: The phone number of the person to contact regarding the incident.
+              example: '9988776655'
+            contact_email:
+              type: string
+              description: The email address of the person to contact regarding the incident.
+              example: 'submitter@host.domain'
+            last_time_worked_at:
+              type: string
+              format: date-time
+              description: The date and time when the affected service was working properly. (RFC 3339 date-time).
+              example:
+                - "2020-01-01T15:30:00.000Z"
+                - "I don't know"
+                - "Never"
+            number_of_impacted_subscriptions:
+              type: string
+              description: Number of subscriptions affected by the incident.Mandatory field when creating a connectivity category incident. A number from 1 to 5 which corresponds to the number of subscriptions affected by the incident, as follows
+                            1. Less than 30,000 subscriptions
+                            2. Between 30,000 - 99,999 subscriptions of Emergency voice call service
+                            3. Between 30,000 - 99,999 subscriptions excluding Emergency voice call service
+                            4. 100,000 subscribers or more
+                            5. I don't know
+              example: "1"
+            country:
+              type: string
+              description: The location country of impacted devices/subscriptions.
+              example: 'Finland'
+            city:
+              type: string
+              description: The location city of impacted devices/subscriptions.Note:Mandatory field when create connectivity category incident.
+              example: 'Kirkkonummi'
+            street:
+              type: string
+              description: The location street of impacted devices/subscriptions.
+              example: 'Hirsalantie 11'
+            escalated:
+              type: boolean
+              description: Returns true if incident is escalated.
+              example: true
+            status:
+              type: string
+              description: Current status of the incident (DRAFT/NEW/ASSIGNED/IN_PROGRESS/PENDING/RESOLVED/FORWARDED/CLOSED/CANCELLED).
+              x-extensible-enum:
+                - DRAFT
+                - NEW
+                - ASSIGNED
+                - IN_PROGRESS
+                - PENDING
+                - RESOLVED
+                - FORWARDED
+                - CLOSED
+                - CANCELLED
+              example: DRAFT
+              readOnly: true
+            status_change_reason:
+              type: string
+              description: The reason for changing the incident status.Note:Mandatory field for PENDING(first two enums) / RESOLVED statuses
+              x-extensible-enum:
+                - CLIENT_HOLD
+                - CLIENT_ACTION_REQUIRED
+
+                - BY_CUSTOMER
+                - DUPLICATE
+                - KNOWN_ERROR
+                - NEW_WORK_AROUND
+                - RESOLVED_BY_3_RD_PARTY
+                - HOT_FIX_RELEASE_IMPLEMENTED
+                - NO_FAULT_FOUND
+              readOnly: true
+            isVIPIncident:
+              type: boolean
+              description: true if incident is VIP. VIP incident is a functionality available for operators only, as part of the IoT Accelerator Premium Support service.
+        - $ref: '#/components/schemas/Auditable'
+
+    SearchRequest:
+      type: object
+      properties:
+        limit:
+          description: The number of incidents to list.
+          type: string
+          example: '100'
+          minimum: 1
+        organization_ids:
+          description: A list of organization ids to filter the incidents.
+          type: array
+          items:
+            type: string
+            example:
+              - '1.2.3'
+              - '1.2.4.*'
+        from:
+          description: The starting date yyyy-mm-dd. (RFC 3339 date-time)
+          type: string
+          format: date
+          example: '2020-01-01'
+        to:
+          description: The finishing date yyyy-mm-dd. (RFC 3339 date-time)
+          type: string
+          format: date
+          example: '2020-02-02'
+        sort:
+          description: Sorting fields and order.
+          type: string
+          x-extensible-enum:
+            - id
+            - created
+            - last_modified_at
+          example: '-last_modified_at,id'
+
+
+    IncidentDetails:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Incident'
+        - type: object
+          properties:
+            activities:
+              description: A list of activities related to this incident. The first activity is always the creation of the incident.
+              type: array
+              items:
+                $ref: '#/components/schemas/Activity'
+
+    Activity:
+      type: object
+      description: An activity related to an incident.
+      allOf:
+        - $ref: '#/components/schemas/Auditable'
+        - $ref: '#/components/schemas/ActivityStatus'
+        - type: object
+          required:
+            - id
+            - summary
+          properties:
+            id:
+              type: string
+              readOnly: true
+              description: Unique activity id.
+              example: j23h434k
+            summary:
+              type: string
+              maxLength: 100
+              description: Short description of the activity.
+              example: Initial activity
+            description:
+              type: string
+              maxLength: 2000
+              description: Detailed description of the activity.
+              example: Incident created.
+            attachments:
+              description: A list of attachment metadata.
+              readOnly: true
+              type: array
+              items:
+                $ref: '#/components/schemas/Attachment'
+
+    Attachment:
+      type: object
+      description: File attachment metadata.
+      allOf:
+        - $ref: '#/components/schemas/Auditable'
+        - type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+              description: File attachment unique id.
+              example: dg3g5vdg
+              readOnly: true
+            name:
+              type: string
+              description: File name.
+              example: 'Image.jpg'
+
+    AttachmentsList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          description: A list of attachments metadata.
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+
+    FileUpload:
+      type: object
+      required:
+        - file
+        - fileName
+      properties:
+        file:
+          type: string
+          format: binary
+        fileName:
+          type: string
+          format: string
+          example: 'Sample.txt'
+
+    Auditable:
+      type: object
+      description: Common metadata of auditable entities.
+      properties:
+        created_at:
+          type: string
+          format: date-time
+          description: The date and time when this entity was created. (RFC 3339 date-time)
+          example: '2017-06-27T15:47:03.000Z'
+          readOnly: true
+        created_by_user:
+          type: string
+          description: The user who created this entity.
+          example: 'user@enterprise.xyz'
+          readOnly: true
+        last_modified_at:
+          type: string
+          format: date-time
+          description: The date and time of last modification. (RFC 3339 date-time)
+          example: '2017-06-27T15:47:03.000Z'
+          readOnly: true
+        modified_by_user:
+          type: string
+          description: The user who was the last to modify this entity.
+          example: 'user@enterprise.xyz'
+          readOnly: true
+
+    IncidentStatus:
+      type: object
+      required:
+        - status
+        - status_change_reason
+      properties:
+        status:
+          type: string
+          description: Current status of the incident (DRAFT/NEW/ASSIGNED/IN_PROGRESS/PENDING/RESOLVED/FORWARDED/CLOSED/CANCELLED).
+          x-extensible-enum:
+            - DRAFT
+            - NEW
+            - ASSIGNED
+            - IN_PROGRESS
+            - PENDING
+            - RESOLVED
+            - FORWARDED
+            - CLOSED
+            - CANCELLED
+          example: NEW
+        status_change_reason:
+          type: string
+          description: The reason for changing the incident status.Note:Mandatory field for PENDING(first two enums) / RESOLVED statuses(Other enum values)
+          x-extensible-enum:
+            - CLIENT_HOLD
+            - CLIENT_ACTION_REQUIRED
+
+            - BY_CUSTOMER
+            - DUPLICATE
+            - KNOWN_ERROR
+            - NEW_WORK_AROUND
+            - RESOLVED_BY_3_RD_PARTY
+            - HOT_FIX_RELEASE_IMPLEMENTED
+            - NO_FAULT_FOUND
+          readOnly: true
+        resolution_reason:
+          type: string
+          description: The reason for resolution of the RESOLVED incident status.
+          example: 'Reported Incident is the duplicate ticket'
+          readOnly: true
+
+    ActivityStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Current status of the activity (DRAFT/CREATED).
+          x-extensible-enum:
+            - DRAFT
+            - CREATED
+          example: DRAFT
+
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          description: |
+            An absolute URI that identifies the problem type.  When dereferenced,
+            it SHOULD provide human-readable documentation for the problem type
+            (e.g., using HTML).
+          default: 'about:blank'
+          example: 'https://your.api.documentation.url'
+        title:
+          type: string
+          description: |
+            A short, summary of the problem type. Written in english and readable
+            for engineers (usually not suited for non technical stakeholders and
+            not localized); example: Service Unavailable
+        status:
+          type: integer
+          format: int32
+          description: |
+            The HTTP status code generated by the origin server for this occurrence
+             of the problem.
+          minimum: 100
+          maximum: 600
+          exclusiveMaximum: true
+          example: 503
+        detail:
+          type: string
+          description: |
+            A human readable explanation specific to this occurrence of the
+            problem.
+          example: Connection to database timed out
+        instance:
+          type: string
+          description: |
+            An absolute URI that identifies the specific occurrence of the problem.
+            It may or may not yield further information if dereferenced.
+    VIPIncidentCount:
+      type: object
+      allOf:
+        - type: object
+          required:
+            - newOrganizationId
+            - currentCount
+            - maxUsageLimit
+            - month
+          properties:
+            newOrganizationId:
+              type: string
+              description: The ID of the Organization in the new period-separated format
+              example: 3.88
+            currentCount:
+              type: integer
+              description: Current VIP Incident count
+              example: 17
+            maxUsageLimit:
+              type: integer
+              description: The usage limit of VIP Incidents
+              example: 5
+            month:
+              type: string
+              description: The month for which the current VIP incident count applies in <mm/yyyy> format
+              example: 03/2022
+            
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: 'The External Incidents API uses OAuth2 and OIDC for authentication and authorization.'
+      flows:
+        password:
+          tokenUrl: '/iot/api/auth/token'
+          scopes:
+            cnx_log_incident_2: 'Grants access to view and create incidents information by operator users.'
+            css_manage_incidents_for_advanced_reseller_enterprise: 'Grants access to view, create and update incidents information by reseller users.'
+            cnx_manage_incidents: 'Grants access to manage incidents information by operator users.'
+            css_premium_csp_incident_for_operators: 'Enables premium CSPs to create VIP Incidents compared to the standard incident severity matrix' 

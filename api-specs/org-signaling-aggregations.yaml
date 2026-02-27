@@ -1,0 +1,600 @@
+---
+openapi: 3.0.3
+info:
+  title: "Organization Signaling Aggregations API"
+  version: 1.0.0
+  description: |
+
+    #### Copyright
+    © Aeris Communications, Inc. 2026. All rights reserved. No part of this document may be reproduced in any form without the written permission of the copyright owner.
+
+    #### Disclaimer
+
+    The contents of this document are subject to revision without notice due to continued progress in methodology, design and manufacturing.
+    Aeris shall have no liability for any error or damage of any kind resulting from the use of this document.
+
+    #### Trademark List
+
+    All trademarks mentioned herein are the property of their respective owners.
+    These are shown in the document Trademark Information.
+
+    # Introduction
+
+    This document describes the IoT Organization Signaling Aggregations API.
+    API is used to retrieve aggregated traffic data on real time usage statistics of traffic analytics.
+    The Organization Signaling Aggregations API is based on the Representational State Transfer (REST) interface.
+    From this point on, the Organization Signaling Aggregations API is referred to as API in this document.
+
+    ## Scope
+
+    The API provides operations to query the traffic usages statistics.
+    The API users can query statistics based on aggregated fields and optionally by customer number to limit results.
+
+    <b>Currently supported operations:</b>
+
+     * GET traffic usages statistics
+
+    ## Prerequisites
+    In this document, it is assumed that the user is familiar with the following:
+
+    — Java Script Object Notation (JSON)
+
+    — Basic understanding of REST web services
+
+    — The [OpenAPI Initiative](https://www.openapis.org/) for the standardized format used in this document.
+
+    ## Related Information
+    The definition and explanation of acronyms and terminology and typographic conventions can be found in the following documents:
+
+    — IoTA Glossary of Terms and Acronyms
+
+    — Typographic Conventions
+
+    # General API Guidelines
+
+    ## Compatibility
+
+    API audience must be prepared for compatible API extensions:
+
+    - Be tolerant with unknown fields in the payload (see also Fowler’s "TolerantReader" post), i.e. ignore new fields but do not eliminate them from payload if needed for subsequent PUT requests.
+    - Be prepared that "x-extensible-enum" return parameter may deliver new values. Either be agnostic or provide default behavior for unknown values.
+    - Be prepared to handle HTTP status codes not explicitly specified in endpoint definitions.
+    - Follow the redirect when the server returns HTTP status 301 Moved Permanently.
+
+    ## Security
+
+    This section describes the security measures in the API. Security measures include authentication, authorization, and encryption.
+
+    ### Authentication and Authorization
+
+    The API uses OAuth2 and OpenID Connect (OIDC) for authentication and authorization.
+
+    All API endpoints require authentication, which is performed by passing a token in the Authorization header in each request, preceded by the word Bearer and a space.
+    See the following example:
+
+    ```
+    curl -i -X GET "http://<baseURL>/iot/api/diagnostic-analytics/signaling-aggregations/traffic-usages/{dimension}" -H "Content-Type: application/json" -H "Authorization: Bearer <TOKEN_GOES_HERE>"
+    ```
+    To fetch the token using e.g. curl, submit the following:
+    ```
+    curl -X POST "https://<baseURL>/iot/api/auth/token" -H "Accept: application/vnd.dcp-v1+json" -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&client_id=<client_id>&username=<username>&password=<password>"
+    ```
+
+    ### Encryption
+
+    All API requests are encrypted using the HTTPS protocol to grant secure data transfer.
+
+    ### Permission
+
+    API permissions are authorized by authorization server based on the account roles. Required permissions for this API are documented
+    in 'securitySchemes' section. You can view available permissions for your account through permission library in Service Portal by
+    navigating Administration > Users & roles > Permission library > API: Aggregated traffic or Role administration > Actions > View permission library.
+
+    Make sure permissions "API: Aggregated traffic" are available to your account before you start utilizing this API.
+
+    
+    ## Deprecation
+
+    API deprecation will be reflected in the OpenAPI definition. If a method on a path, a whole path or even a whole API endpoint (multiple paths) should be deprecated, they will be marked as deprecated.
+    During deprecation phase, a Deprecation header and a Sunset header fields will be added in the response.
+
+    Example:
+    ```
+    Deprecation: Tue, 31 Dec 2024 23:59:59 GMT
+    Sunset: Wed, 31 Dec 2025 23:59:59 GMT
+    ```
+
+    API audience should not start using a deprecated API.
+
+    API audience is encouraged to monitor for Deprecation and Sunset header.
+
+
+  x-audience: external-partner
+  x-api-id: 81d83137-7e50-4396-9083-789378c7c534
+servers:
+  - url: 'https://iot-api.aeris.com/iot/api/diagnostic-analytics'
+    description: API server
+tags:
+  - name: Organization Signaling Reports
+    description: Organization Signaling Aggregations APIs.
+paths:
+  /signaling-aggregations/traffic-usages/{dimension}:
+    get:
+      tags:
+        - Organization Signaling Reports
+      summary: Get organization traffic data statistics aggregated on dimension.
+      description: |
+        This service returns various aggregated traffic data. With this operation,
+        it is possible to retrieve traffic aggregated on
+        Total, APN, SMSCAccount, CountryCode, Operator, or Opco per current day.
+        The traffic can be filtered to a specific customer.
+      operationId: QueryTrafficUsages
+      parameters:
+        - $ref: '#/components/parameters/Header-Accept'
+        - $ref: '#/components/parameters/Header-Accept-Version'
+        - $ref: '#/components/parameters/OrganizationIdParameter'
+        - $ref: '#/components/parameters/DimensionParameter'
+      responses:
+        default:
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '200':
+          $ref: '#/components/responses/200'
+        '204':
+          $ref: '#/components/responses/204'
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '405':
+          $ref: '#/components/responses/405'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+      security:
+        - OAuth2:
+            - cnx_aggregated_traffic
+components:
+  schemas:
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+          description: |
+            An absolute URI that identifies the problem type. When dereferenced,
+            it SHOULD provide human-readable documentation for the problem type
+            (e.g., using HTML).
+          format: uri
+          example: https://your.api.documentation.url
+          default: about:blank
+        title:
+          type: string
+          description: |
+            A short, summary of the problem type. Written in english and readable
+            for engineers (usually not suited for non technical stakeholders and
+            not localized).
+          example: Internal Server Error
+        status:
+          maximum: 600
+          exclusiveMaximum: true
+          minimum: 100
+          type: integer
+          description: |
+            The HTTP status code generated by the origin server for this occurrence
+            of the problem.
+          format: int32
+          example: 500
+        detail:
+          type: string
+          description: |
+            A human readable explanation specific to this occurrence of the
+            problem.
+          example: The server has encountered a situation that it does not know how
+            to handle.
+        instance:
+          type: string
+          description: |
+            An absolute URI that identifies the specific occurrence of the problem.
+            It may or may not yield further information if dereferenced.
+    TrafficUsagesResponse:
+      description: 'Response containing aggregated traffic statistics'
+      type: object
+      properties:
+        usageAggregations:
+          type: array
+          description: |
+            Aggregated items based on the dimension parameter.
+          items:
+            $ref: '#/components/schemas/Aggregation'
+    DimensionEnum:
+      type: string
+      description: |
+        A parameter that tells how to aggregate the data. Valid values are as follows:
+          - APN
+          - SMSC_ACCOUNT
+          - COUNTRY_CODE
+          - OPCO
+          - OPERATOR
+          - TOTAL
+      enum:
+        - APN
+        - SMSC_ACCOUNT
+        - COUNTRY_CODE
+        - OPCO
+        - OPERATOR
+        - TOTAL
+      example: COUNTRY_CODE
+      default: TOTAL
+    Aggregation:
+      allOf:
+        - $ref: '#/components/schemas/Common'
+        - properties:
+            data:
+              $ref: '#/components/schemas/Data'
+            sms:
+              type: array
+              items:
+                $ref: '#/components/schemas/Sms'
+    Data:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - properties:
+            uploaded:
+              type: integer
+              format: int64
+              description: |
+                Optional. Uploaded data (in Bytes). Eight-byte integer, its maximum value is 2^63-1.
+              example: 1055
+              default: 0
+            lastUploadedAt:
+              type: string
+              format: date-time
+              description: 'Optional. The timestamp of the last uploaded data.'
+              example: '2001-12-31T00:00:00.000Z'
+            downloaded:
+              type: integer
+              format: int64
+              description: |
+                Optional. Downloaded data (in Bytes). Eight-byte integer, its maximum value is 2^63-1.
+              example: 1055
+              default: 0
+            lastDownloadedAt:
+              type: string
+              format: date-time
+              description: 'Optional. The timestamp of the last downloaded data.'
+              example: '2001-12-31T00:00:00.000Z'
+    Sms:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - properties:
+            type:
+              type: string
+              description: 'Type of SMS traffic.'
+              enum:
+                - MobileOriginated
+                - MobileTerminated
+                - ApplicationOriginated
+                - ApplicationTerminated
+            successCount:
+              type: integer
+              format: int64
+              description: |
+                Optional. Total number of messages.
+                Eight-byte integer, its maximum value is 2^63 - 1.
+              example: 100
+              default: 0
+            lastOccurredAt:
+              type: string
+              format: date-time
+              description: 'Optional. The date and time of the last message.'
+              example: '2001-12-31T00:00:00.000Z'
+    Common:
+      type: object
+      properties:
+        dimensionValue:
+          type: string
+          description: |
+            The value of the aggregated dimension.
+          example: 'FI'
+        numberOfLocationUpdates:
+          type: integer
+          format: int64
+          description: |
+            Optional. Number of location updates.
+            Eight-byte integer, its maximum value is 2^63-1.
+          default: 0
+          example: 1000
+        activePDPContexts:
+          type: integer
+          format: int64
+          description: |
+            Optional. Number of active PDP Contexts.
+            Eight-byte integer, its maximum value is 2^63-1.
+          default: 0
+          example: 100
+    Error:
+      type: object
+      properties:
+        errorCount:
+          type: integer
+          format: int64
+          description: |
+            Optional. Number of errors. Eight-byte integer, its maximum value is 2^63-1.
+          example: 10
+          default: 0
+        lastErrorOccurredAt:
+          type: string
+          format: date-time
+          description: 'Optional. The date and time of last error.'
+          example: '2001-12-31T00:00:00.000Z'
+  headers:
+    Content-Type:
+      description: Handle Content-Type
+      schema:
+        type: string
+    X-RateLimit-Limit-Second:
+      description: The maximum number of requests allowed in a second.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Limit-Minute:
+      description: The maximum number of requests allowed in a minute.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Remaining-Second:
+      description: The number of requests remaining in a second.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Remaining-Minute:
+      description: The number of requests remaining in a minute.
+      schema:
+        type: integer
+        format: int32
+  parameters:
+    Header-Accept:
+      name: Accept
+      in: header
+      description: Accept content-type and schemas by the client
+      schema:
+        type: string
+        example: 'application/json'
+        default: 'application/json'
+    Header-Accept-Version:
+      name: Accept-Version
+      in: header
+      description: Accept version of the response
+      schema:
+        type: string
+        example: '0.0.1'
+        default: '0.0.1'
+    OrganizationIdParameter:
+      name: organizationId
+      in: query
+      description: |
+        ID of the organization for which the aggregation should be done. It could be a fix number e.g. '1.2.3' or it can contain ‘*’ as a wildcard in the following way:
+          - '1.2.*' will filter all organization whose id starts with 1.2 but not the parent 1.2 itself
+          - '1.2*' will filter all organizations whose id starts with 1.2 and include the parent 1.2 itself'
+      schema:
+        type: string
+      example: 22.2.2.22
+    DimensionParameter:
+      name: dimension
+      in: path
+      required: true
+      description: |
+        A parameter that tells how to aggregate the data. Valid values are as follows:
+          - APN
+          - SMSC_ACCOUNT
+          - COUNTRY_CODE
+          - OPCO
+          - OPERATOR
+          - TOTAL
+
+        Real time usage query response elements:
+          | Value in the Request | Description |
+          |-------------|------------|
+          | APN         | Only 'activePDPContexts' and 'data' contain related data. |
+          | SMSC_ACCOUNT | Only smsMobileOriginated, smsMobileTerminated, smsApplicationOriginated, and smsAApplicationTerminated contain related data. |
+          | COUNTRY_CODE | All elements contain related data. |
+          | OPCO        | Aggregation on customer number. All elements contain related data. |
+          | OPERATOR    | All elements contain related data. |
+          | TOTAL       | All elements contain related data. |
+
+      schema:
+        $ref: '#/components/schemas/DimensionEnum'
+  responses:
+    '200':
+      description: OK
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TrafficUsagesResponse'
+    '204':
+      description: No Content
+    '400':
+      description: Bad Request
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: 'https://your.api.documentation.url'
+            title: Bad Request
+            status: 400
+            detail: The dimension parameter is unknown.
+            instance: N/A
+
+    '401':
+      description: Unauthorized
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: 'about:blank'
+            title: Unauthorized
+            status: 401
+            detail: Token expired.
+            instance: N/A
+    '403':
+      description: Forbidden
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: 'about:blank'
+            title: Forbidden
+            status: 403
+            detail: Action forbidden.
+            instance: N/A
+    '404':
+      description: Not Found
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: 'about:blank'
+            title: Not Found
+            status: 404
+            detail: Resource not found.
+            instance: N/A
+    '405':
+      description: Method Not Allowed
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: 'about:blank'
+            title: Method Not Allowed
+            status: 405
+            detail: Method not allowed.
+            instance: N/A
+    '429':
+      description: Too Many Requests
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: 'about:blank'
+            title: Too Many Requests
+            status: 429
+            detail: Limit of requests fully used. Please try later.
+            instance: N/A
+    '500':
+      description: Internal Server Error
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: The API uses OAuth2 and OIDC for authentication and authorization.
+      flows:
+        password:
+          tokenUrl: '/iot/api/auth/token'
+          scopes:
+            cnx_aggregated_traffic: Access right to perform query operation.

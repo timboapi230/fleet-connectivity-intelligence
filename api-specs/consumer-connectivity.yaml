@@ -1,0 +1,1668 @@
+---
+openapi: 3.0.1
+info:
+  title: Consumer connectivity
+  description: |
+    #### Copyright
+    © Aeris Communications, Inc. 2026. All rights reserved. No part of this document may be reproduced in any form without the written permission of the copyright owner.
+
+    #### Disclaimer
+
+    The contents of this document are subject to revision without notice due to continued progress in methodology, design and manufacturing.
+    Aeris shall have no liability for any error or damage of any kind resulting from the use of this document.
+
+    #### Trademark List
+
+    All trademarks mentioned herein are the property of their respective owners.
+    These are shown in the document Trademark Information.
+
+    # Introduction
+
+    This document describes the IoT Accelerator Consumer Connectivity API that provides
+    resources to manage consumer owned data balances, products, purchases, recurring purchases, and subscriptions.
+    The Consumer Connectivity API is based on the Representational State Transfer (REST) interface.
+    From this point on, the Consumer Connectivity API is referred to as API in this document.
+
+    ## Scope
+
+    This document covers the following topics:
+
+    — An overview of the API
+
+    — A detailed description of all operations offered by the API
+
+    ## Prerequisites
+    In this document, it is assumed that the user is familiar with the following:
+
+    — Java Script Object Notation (JSON)
+
+    — Basic understanding of REST web services
+
+    — The [OpenAPI Initiative](https://www.openapis.org/) for the standardized format used in this document.
+
+    ## Related Information
+    The definition and explanation of acronyms and terminology and typographic conventions can be found in the following documents:
+
+    — IoTA Glossary of Terms and Acronyms
+
+    — Typographic Conventions
+
+    # General API Guidelines
+
+    ## Compatibility
+
+    API audience must be prepared for compatible API extensions:
+
+    - Be tolerant with unknown fields in the payload (see also Fowler’s "TolerantReader" post), i.e. ignore new fields but do not eliminate them from payload if needed for subsequent PUT requests.
+    - Be prepared that "x-extensible-enum" return parameter may deliver new values. Either be agnostic or provide default behavior for unknown values.
+    - Be prepared to handle HTTP status codes not explicitly specified in endpoint definitions.
+    - Follow the redirect when the server returns HTTP status 301 Moved Permanently.
+
+    ## Security
+
+    This section describes the security measures in the API. Security measures include authentication, authorization, and encryption.
+
+    ### Authentication and Authorization
+
+    The API uses OAuth2 and OpenID Connect (OIDC) for authentication and authorization.
+
+    All API endpoints require authentication, which is performed by passing a token in the Authorization header in each request, preceded by the word Bearer and a space. See the following example:
+    ```
+    curl -i -X GET "http://<baseURL>/iot/api/consumer-connectivity/subscriptions/IMSI/<A_Specific_IMSI>" -H "Accept: application/vnd.dcp-v1+json" -H "Authorization: Bearer <TOKEN_GOES_HERE>"
+    ```
+    To fetch the token using e.g. curl, submit the following:
+    ```
+    curl -X POST "https://<baseURL>/iot/api/auth/token" -H "Accept: application/vnd.dcp-v1+json" -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&client_id=<client_id>&username=<username>&password=<password>"
+    ```
+    ### Encryption
+
+    All API requests are encrypted using the HTTPS protocol to grant secure data transfer.
+
+    
+    ## Deprecation
+
+    API deprecation will be reflected in the OpenAPI definition. If a method on a path, a whole path or even a whole API endpoint (multiple paths) should be deprecated, they will be marked as deprecated.
+    During deprecation phase, a Warning header (see RFC 7234 - Warning header) field will be added in the response. The warn-code will be 299 and the warn-text will inform about what is deprecated and when it will be completely removed.
+
+    API audience should not start using a deprecated API.
+
+    API audience is encouraged to monitor for Warning header.
+  version: 2.0.1
+  x-api-id: 7d04b81f-0545-4c01-9d81-244fda13b6c8
+  x-audience: external-public
+servers:
+  - url: https://iot-api.aeris.com/iot/api/consumer-connectivity
+    description: API server
+security:
+  - Oauth2_auth: []
+paths:
+  /data-balances/{company-id}/{subscription-id-type}/{subscription-id}:
+    get:
+      tags:
+        - Data balances
+      summary: Get data balance of a subscription.
+      description: Returns data balance of a subscription.
+      operationId: getDataBalanceBySubscription
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Data balance
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/DataBalance'
+        400:
+          description: Invalid subscription
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company or subscription not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /products:
+    put:
+      tags:
+        - Products
+      summary: Update product for a company.
+      description: Updates a product for a company.
+      operationId: updateProduct
+      parameters:
+        - name: update_recurring_purchases
+          in: query
+          description: Apply changes in prices to
+            the existing recurring purchases.
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        description: Product to be updated.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/ProductModel'
+        required: true
+      responses:
+        200:
+          description: Product
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ProductModel'
+        400:
+          description: Invalid product
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Product not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+    post:
+      tags:
+        - Products
+      summary: Create a new product for a company.
+      description: Creates a new product for a company.
+      operationId: createProduct
+      requestBody:
+        description: Product to be created.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/ProductModel'
+        required: true
+      responses:
+        200:
+          description: Product
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ProductModel'
+        400:
+          description: Invalid product
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+  /products/{company-id}:
+    get:
+      tags:
+        - Products
+      summary: List products of a company.
+      description: Lists products of a company.
+      operationId: getProductsByCompany
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID whose products are to be fetched.
+          required: true
+          schema:
+            type: string
+        - name: product_id
+          in: query
+          description: Product ID
+          schema:
+            type: string
+            default: ""
+        - name: product_id_match
+          in: query
+          description: Product ID match type
+          schema:
+            $ref: '#/components/schemas/MatchTypeEnum'
+        - name: state
+          in: query
+          description: Product states
+          required: false
+          explode: true
+          schema:
+            uniqueItems: true
+            type: array
+            default: [ACTIVE]
+            items:
+              $ref: '#/components/schemas/ProductStateFilterEnum'
+        - name: tag
+          in: query
+          description: Product tag
+          required: false
+          schema:
+            type: string
+            default: ""
+        - name: tag_match
+          in: query
+          description: Product tag match type
+          required: false
+          schema:
+            $ref: '#/components/schemas/MatchTypeEnum'
+        - name: page
+          in: query
+          description: Page number or offset
+          required: false
+          schema:
+            $ref: '#/components/schemas/Page'
+        - name: per_page
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            $ref: '#/components/schemas/PerPage'
+      responses:
+        200:
+          description: Product list
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /products/{company-id}/{product-id}:
+    get:
+      tags:
+        - Products
+      summary: Get a product of a company.
+      description: Returns a product of a company.
+      operationId: getProductById
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID whose products are to be fetched.
+          required: true
+          schema:
+            type: string
+        - name: product-id
+          in: path
+          description: Product ID
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Product
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ProductModel'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company or product not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /products/{company-id}/properties/values:
+    get:
+      tags:
+        - Products
+      summary: Get product property values of a company.
+      description: Returns valid product property values of a company.
+      operationId: getProductPropertyValues
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID whose product property values
+            is to be fetched.
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Product property values response
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ProductPropertyValuesResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /purchases/{company-id}/{subscription-id-type}/{subscription-id}/{purchase-id}:
+    get:
+      tags:
+        - Purchases
+      summary: Get a purchase of a subscription.
+      description: Returns a purchase of a subscription.
+      operationId: getPurchase
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+        - name: purchase-id
+          in: path
+          description: Purchase ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Purchase
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/PurchaseModel'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or purchase not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /purchases/{company-id}/{subscription-id-type}/{subscription-id}/free:
+    post:
+      tags:
+        - Purchases
+      summary: Purchase a free product.
+      description: Purchases a free product.
+      operationId: purchaseFree
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FreePurchaseRequestModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/FreePurchaseRequestModel'
+      responses:
+        200:
+          description: Purchase
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/PurchaseModel'
+        400:
+          description: Invalid purchase request
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or product not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+  /purchases/{company-id}/{subscription-id-type}/{subscription-id}/refund:
+    put:
+      tags:
+        - Purchases
+      summary: Refund a purchase of a subscription.
+      description: Refunds a purchase of a subscription.
+      operationId: refundPurchase
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefundPurchaseRequestModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/RefundPurchaseRequestModel'
+      responses:
+        200:
+          description: Purchase
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/PurchaseModel'
+        400:
+          description: Purchase already refunded or
+            purchase state is not refundable
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or purchase not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+  /purchases/buckets/{company-id}/{subscription-id-type}/{subscription-id}/{purchase-id}:
+    delete:
+      tags:
+        - Purchases
+      summary: Delete a bucket of a subscription.
+      description: Deletes a bucket of a subscription by purchase ID.
+      operationId: deleteBucket
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+        - name: purchase-id
+          in: path
+          description: Purchase ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Bucket data
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/BucketDataModel'
+        400:
+          description: Invalid subscription
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or purchase not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+  /purchases/{company-id}/{subscription-id-type}/{subscription-id}:
+    get:
+      tags:
+        - Purchases
+      summary: List purchases of a subscription.
+      description: Lists purchases of a subscription.
+      operationId: getPurchasesBySubscription
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+        - name: product_id
+          in: query
+          description: Product ID
+          schema:
+            type: string
+            default: ""
+        - name: initial_purchase_id
+          in: query
+          description: Initial purchase ID
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          description: Page number or offset
+          schema:
+            $ref: '#/components/schemas/Page'
+        - name: per_page
+          in: query
+          description: Items per page
+          schema:
+            $ref: '#/components/schemas/PerPage'
+      responses:
+        200:
+          description: Purchase list
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/PurchaseList'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company or subscription not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+    post:
+      tags:
+        - Purchases
+      summary: Purchase a product.
+      description: Purchases a product.
+      operationId: purchase
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseRequestModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequestModel'
+      responses:
+        200:
+          description: Purchase
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/PurchaseModel'
+        400:
+          description: Invalid purchase request
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or product not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /recurring-purchases/{company-id}/{subscription-id-type}/{subscription-id}/pause:
+    put:
+      tags:
+        - Recurring purchases
+      summary: Pause or resume a recurring purchase of a subscription.
+      description: Pauses or resumes a recurring purchase of a subscription.
+      operationId: pauseRecurringPurchase
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PauseRecurringPurchaseRequestModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/PauseRecurringPurchaseRequestModel'
+      responses:
+        200:
+          description: Recurring purchase
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/RecurringPurchaseModel'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or recurring purchase not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+  /recurring-purchases/{company-id}/{subscription-id-type}/{subscription-id}/free:
+    put:
+      tags:
+        - Recurring purchases
+      summary: Set free recurring purchases for a subscription.
+      description: Sets free recurring purchases for a subscription.
+      operationId: freeRecurringPurchases
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FreeRecurringPurchasesRequestModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/FreeRecurringPurchasesRequestModel'
+      responses:
+        200:
+          description: Recurring purchase
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/RecurringPurchaseModel'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or recurring purchase not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+  /recurring-purchases/{company-id}/{subscription-id-type}/{subscription-id}:
+    get:
+      tags:
+        - Recurring purchases
+      summary: List active recurring purchases of a subscription.
+      description: Lists active recurring purchases of a subscription.
+      operationId: getRecurringPurchasesBySubscription
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Recurring purchases
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecurringPurchaseModel'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company or subscription not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /recurring-purchases/{company-id}/{subscription-id-type}/{subscription-id}/{purchase-id}:
+    delete:
+      tags:
+        - Recurring purchases
+      summary: Cancel recurring purchase of a subscription.
+      description: Cancels recurring purchases of a subscription.
+        Data bucket will not be deleted
+      operationId: deleteRecurringPurchase
+      parameters:
+        - name: company-id
+          in: path
+          description: Company ID of the subscription.
+          required: true
+          schema:
+            type: string
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+        - name: purchase-id
+          in: path
+          description: Purchase ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Delete response
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Company, subscription or recurring purchase not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+  /subscriptions/{subscription-id-type}/{subscription-id}:
+    get:
+      tags:
+        - Subscriptions
+      summary: Get a subscription.
+      description: Returns a subscription.
+      operationId: getSubscription
+      parameters:
+        - name: subscription-id-type
+          in: path
+          description: Subscription ID type
+          required: true
+          schema:
+            $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        - name: subscription-id
+          in: path
+          description: Subscription ID
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Subscription
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionModel'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Subscription not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.read
+  /subscriptions/reset:
+    put:
+      tags:
+        - Subscriptions
+      summary: Reset a subscription.
+      description: Resets a subscription.
+      operationId: resetSubscription
+      requestBody:
+        description: Reset subscription request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetSubscriptionRequestModel"
+          application/vnd.dcp-v1+json:
+            schema:
+              $ref: '#/components/schemas/ResetSubscriptionRequestModel'
+        required: true
+      responses:
+        200:
+          description: Reset response
+          allOf:
+            - $ref: '#/components/responses/RateLimitedResponse'
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ResetResponse'
+        400:
+          description: Invalid reset subscription request
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Subscription or company not found
+          content:
+            application/vnd.dcp-v1+json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          $ref: '#/components/responses/Response_429'
+        500:
+          $ref: '#/components/responses/InternalError'
+      security:
+        - Oauth2_auth:
+            - cc.write
+components:
+  headers:
+    Content-Type:
+      description: Handle Content-Type
+      schema:
+        type: string
+    X-RateLimit-Limit-Second:
+      description: The maximum number of requests allowed in a second.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Limit-Minute:
+      description: The maximum number of requests allowed in a minute.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Remaining-Second:
+      description: The number of requests remaining in a second.
+      schema:
+        type: integer
+        format: int32
+    X-RateLimit-Remaining-Minute:
+      description: The number of requests remaining in a minute.
+      schema:
+        type: integer
+        format: int32
+  schemas:
+    BucketDataModel:
+      type: object
+      properties:
+        company_id:
+          type: string
+        imsi:
+          type: string
+        msisdn:
+          type: string
+        product_id:
+          type: string
+        purchase_id:
+          type: string
+          format: uuid
+        instance_id:
+          type: string
+        bucket_type:
+          type: string
+        instance_type:
+          type: string
+        volume:
+          type: integer
+          format: int64
+        balance:
+          type: integer
+          format: int64
+        end_date:
+          type: string
+          format: date-time
+        created:
+          type: string
+          format: date-time
+      description: Bucket data
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        http_status:
+          type: integer
+          format: int32
+          default: 500
+        message:
+          type: string
+      description: Error response
+    FreePurchaseRequestModel:
+      type: object
+      properties:
+        product_id:
+          type: string
+        free_purchases:
+          type: integer
+          format: int32
+      description: Free purchase request
+    FreeRecurringPurchasesRequestModel:
+      type: object
+      properties:
+        purchase_id:
+          type: string
+          format: uuid
+        free_purchases:
+          type: integer
+          format: int32
+      description: Free recurring purchases request
+    PauseRecurringPurchaseRequestModel:
+      type: object
+      properties:
+        purchase_id:
+          type: string
+          format: uuid
+        paused:
+          type: boolean
+      description: Pause recurring purchase request
+    PriceModel:
+      type: object
+      properties:
+        price:
+          type: number
+          format: double
+        currency_code:
+          type: string
+        vat:
+          type: number
+          format: float
+        validity_period:
+          $ref: '#/components/schemas/TimePeriodModel'
+      description: Price
+    ProductModel:
+      type: object
+      properties:
+        company_id:
+          type: string
+        product_id:
+          type: string
+        state:
+          $ref: '#/components/schemas/ProductStateEnum'
+        descriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductDescriptionModel'
+        description:
+          $ref: '#/components/schemas/ProductDescriptionModel'
+        tags:
+          type: array
+          items:
+            type: string
+        bucket_type:
+          type: string
+        instance_type:
+          type: string
+        volume:
+          type: integer
+          format: int64
+        validity_period:
+          $ref: '#/components/schemas/TimePeriodModel'
+        recurrence_interval:
+          $ref: '#/components/schemas/TimePeriodModel'
+        free_purchases:
+          type: integer
+          format: int32
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceModel'
+        low_bucket_volume_limit:
+          type: integer
+          format: int32
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+      description: Product
+    ProductDescriptionModel:
+      type: object
+      properties:
+        language:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+      description: Product description
+    PurchaseRequestModel:
+      type: object
+      properties:
+        product_id:
+          type: string
+      description: Purchase request
+    RecurrenceStateModel:
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+            - ACTIVE
+            - PAUSED
+            - FINAL_RENEW_COMPLETED
+            - CANCELED
+        timestamp:
+          type: string
+          format: date-time
+      description: Recurrence state
+    RecurringPurchaseModel:
+      type: object
+      properties:
+        company_id:
+          type: string
+        imsi:
+          type: string
+        msisdn:
+          type: string
+        initial_purchase_id:
+          type: string
+          format: uuid
+        purchase_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+        bucket_end_date:
+          type: string
+          format: date-time
+        renew:
+          type: string
+          format: date-time
+        recurrence_interval:
+          $ref: '#/components/schemas/TimePeriodModel'
+        recurrence_end_date:
+          type: string
+          format: date-time
+        free_purchases:
+          type: integer
+          format: int32
+        recurrence_state:
+          $ref: '#/components/schemas/RecurrenceStateModel'
+        renew_completed_count:
+          type: integer
+          format: int32
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceModel'
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+      description: Recurring purchase
+    SubscriptionModel:
+      type: object
+      properties:
+        company_id:
+          type: string
+        imsi:
+          type: string
+        msisdn:
+          type: string
+      description: Subscription
+    TimePeriodModel:
+      type: object
+      properties:
+        unit:
+          type: string
+          enum:
+            - NONE
+            - DAYS
+            - WEEKS
+            - MONTHS
+            - YEARS
+        value:
+          type: integer
+          format: int64
+      description: Time period
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      description: Delete response
+    DataBalance:
+      type: object
+      properties:
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/BucketDataModel'
+      description: Data balance
+    ProductList:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+        pages:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+        count_limit_reached:
+          type: boolean
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductModel'
+      description: Product list
+    BucketTypeModel:
+      type: object
+      properties:
+        bucket_type:
+          type: string
+        instance_types:
+          uniqueItems: true
+          type: array
+          items:
+            type: string
+      description: Bucket type
+    ProductPropertyValuesResponse:
+      type: object
+      properties:
+        bucket_types:
+          uniqueItems: true
+          type: array
+          items:
+            $ref: '#/components/schemas/BucketTypeModel'
+    BucketEventModel:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/BucketEventTypeEnum'
+        timestamp:
+          type: string
+          format: date-time
+      description: Bucket event
+    DeletedBucketModel:
+      type: object
+      properties:
+        balance:
+          type: integer
+          format: int64
+        timestamp:
+          type: string
+          format: date-time
+      description: Deleted bucket
+    PurchaseModel:
+      type: object
+      properties:
+        company_id:
+          type: string
+        imsi:
+          type: string
+        msisdn:
+          type: string
+        purchase_id:
+          type: string
+          format: uuid
+        created:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+        initial_purchase_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+        product_description:
+          $ref: '#/components/schemas/ProductDescriptionModel'
+        instance_id:
+          type: string
+        bucket_type:
+          type: string
+        instance_type:
+          type: string
+        volume:
+          type: integer
+          format: int64
+        bucket_end_date:
+          type: string
+          format: date-time
+        recurrence_interval:
+          $ref: '#/components/schemas/TimePeriodModel'
+        recurrence_end_date:
+          type: string
+          format: date-time
+        recurrence_state:
+          $ref: '#/components/schemas/RecurrenceStateModel'
+        renew_completed_count:
+          type: integer
+          format: int32
+        free_purchases:
+          type: integer
+          format: int32
+        state:
+          $ref: '#/components/schemas/PurchaseStateEnum'
+        type:
+          $ref: '#/components/schemas/PurchaseTypeEnum'
+        price:
+          $ref: '#/components/schemas/PriceModel'
+        deleted_bucket:
+          $ref: '#/components/schemas/DeletedBucketModel'
+        bucket_events:
+          type: array
+          items:
+            $ref: '#/components/schemas/BucketEventModel'
+        error:
+          $ref: '#/components/schemas/ErrorResponse'
+      description: Purchase
+    PurchaseList:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+        pages:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+        count_limit_reached:
+          type: boolean
+        purchases:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseModel'
+      description: Purchase list
+    RefundPurchaseRequestModel:
+      type: object
+      properties:
+        purchase_id:
+          type: string
+          format: uuid
+      description: Refund purchase request
+    ResetResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      description: Reset response
+    ResetSubscriptionRequestModel:
+      type: object
+      properties:
+        company_id:
+          type: string
+        subscription_id_type:
+          $ref: '#/components/schemas/SubscriptionIdTypeEnum'
+        subscription_id:
+          type: string
+      description: ResetSubscription request
+    SubscriptionIdTypeEnum:
+      type: string
+      description: Subscription ID type
+      enum:
+        - IMSI
+        - MSISDN
+    MatchTypeEnum:
+      type: string
+      description: Match type
+      default: EQUALS
+      enum:
+        - EQUALS
+        - CONTAINS
+    ProductStateFilterEnum:
+      type: string
+      description: Product state filter
+      enum:
+        - ALL
+        - DRAFT
+        - ACTIVE
+        - OBSOLETE
+    ProductStateEnum:
+      type: string
+      description: Product state
+      enum:
+        - DRAFT
+        - ACTIVE
+        - OBSOLETE
+    Page:
+      type: integer
+      format: int32
+      description: Page number or offset
+    PerPage:
+      type: integer
+      format: int32
+      default: 20
+      description: Items per page
+    BucketEventTypeEnum:
+      type: string
+      description: Bucket event type
+      enum:
+        - LOW_BUCKET_VOLUME
+        - EMPTY_BUCKET_VOLUME
+        - BUCKET_EXPIRED
+        - BUCKET_RENEW_COMPLETED
+    PurchaseStateEnum:
+      type: string
+      description: Purchase state
+      enum:
+        - CREATED
+        - CHARGED
+        - COMPLETED
+        - RENEW_COMPLETED
+        - REFUNDED
+        - CHARGE_FAILED
+        - REFUND_FAILED
+    PurchaseTypeEnum:
+      type: string
+      description: Purchase type
+      enum:
+        - ONETIME
+        - INITIAL_RECURRING
+        - RENEW_RECURRING
+  securitySchemes:
+    Oauth2_auth:
+      flows:
+        password:
+          tokenUrl:
+            https://iot-api.aeris.com/iot/api/auth/token
+          scopes:
+            cc.read: |-
+              Access right needed to read from Consumer Connectivity service.
+            cc.write: |-
+              Access right needed to write to Consumer Connectivity service.
+      type: oauth2
+  responses:
+    RateLimitedResponse:
+      headers:
+        X-RateLimit-Limit-Second:
+          $ref: '#/components/headers/X-RateLimit-Limit-Second'
+        X-RateLimit-Limit-Minute:
+          $ref: '#/components/headers/X-RateLimit-Limit-Minute'
+        X-RateLimit-Remaining-Second:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Second'
+        X-RateLimit-Remaining-Minute:
+          $ref: '#/components/headers/X-RateLimit-Remaining-Minute'
+        Content-Type:
+          $ref: '#/components/headers/Content-Type'
+    Response_429:
+      description: Too Many Requests
+      allOf:
+        - $ref: '#/components/responses/RateLimitedResponse'
+      content:
+        application/vnd.dcp-v1+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal error
+      content:
+        application/vnd.dcp-v1+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/vnd.dcp-v1+json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
