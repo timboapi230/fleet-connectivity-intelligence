@@ -1,4 +1,4 @@
-﻿# Fleet Connectivity Intelligence
+# Fleet Connectivity Intelligence
 
 **A MyGeotab Add-In that bridges device telemetry and cellular network intelligence — built for the [Geotab Vibe Coding Challenge 2026](https://luma.com/h6ldbaxp).**
 
@@ -14,7 +14,6 @@
 
 I work as a cellular connectivity supplier through **Telenor IoT**. Geotab is one of our customers — their GO9 telematics devices connect to cellular networks through SIM cards that we provision and manage on the Aeris platform.
 
-
 Every day, I see both sides of the connectivity story:
 
 - **Inside MyGeotab**, fleet managers see a signal strength number (e.g., 37 dBm) and device fault codes — but they have no idea which cell tower is serving the vehicle, what carrier is active, or whether the SIM is about to run out of data.
@@ -29,8 +28,7 @@ This Add-In brings both perspectives together for the first time.
 
 ## What It Does
 
-Fleet Connectivity Intelligence is a single-file HTML Add-In that is installed as a new page inside MyGeotab. It provides **6 tabs** of combined intelligence:
-
+Fleet Connectivity Intelligence is a **single self-contained HTML file** installed as a new page inside MyGeotab. It provides **8 tabs** of combined intelligence:
 
 ### Tab 1: Problem Alerts
 Vehicles scored into health tiers (Critical / Warning / Minor / Healthy) based on combined Geotab + Aeris data. Each alert card shows signal strength, radio technology (LTE/3G/2G), connection drops, uptime, error codes, active incidents, and a full network event log — all on one card.
@@ -41,100 +39,92 @@ GPS coordinates from Geotab overlaid with signal strength and cell tower locatio
 ### Tab 3: Fleet Map
 All 50 vehicles with dual-ring markers showing health tier and radio technology. Click any vehicle for full connectivity details including IMSI, IMEI, carrier, cell ID, and data usage.
 
-### Tab 4: Data Usage
+### Tab 4: 🌐 3D Command Center
+An interactive 3D globe view of the fleet powered by **Mapbox GL JS**. Vehicles appear as extruded 3D columns where height represents signal strength and color represents health tier. Critical vehicles glow red. Features include:
+- **Quick-fly navigation buttons** to jump to critical clusters (Vigo), warning areas (Valencia), minor issues (Galicia), and healthy zones (NOS Portugal)
+- Hover tooltips with vehicle name, tier, signal, and carrier
+- Click-to-fly detail panels showing full IMSI/IMEI, error types, uptime, and data usage
+- Fleet intelligence stats overlay with real-time tier counts and LTE coverage percentage
+- Auto-rotation with star field atmosphere for visual impact
+- *Concept prototyped in Google Firebase Studio, then integrated into the main Add-In with Claude*
+
+### Tab 5: Data Usage
 SIM data consumption per vehicle with downloaded/uploaded split, balance percentage, and usage bars. Flags vehicles approaching their data cap.
 
-### Tab 5: Network Diagnostics *(mirrors the Telenor IoT real-time diagnostics view)*
-Fleet-wide session setup success rate, location update success rate, error counts, and active subscription count. Includes sub-tabs for breakdowns by **Carrier**, **Country**, and **Radio Technology** — each with per-group export.
+### Tab 6: Network Diagnostics
+*(Mirrors the Telenor IoT real-time diagnostics view)*
+Fleet-wide session setup success rate, location update success rate, error counts, and active subscription count. Includes sub-tabs for breakdowns by **Carrier**, **Country**, and **Radio Technology** — each with per-group CSV export.
 
-### Tab 6: Errors & Export
-Detailed error log with plain-English descriptions of each error type (AUTH_FAILURE, PDP_REJECT, ATTACH_REJECT, etc.). Three export buttons to download IMSI/IMEI lists as CSV for support escalation or Aeris portal lookup.
+### Tab 7: Errors & Export
+Detailed error log with plain-English descriptions of each error type (AUTH_FAILURE, PDP_REJECT, ATTACH_REJECT, GPRS_DETACH, etc.). Three export buttons to download IMSI/IMEI lists as CSV for support escalation or Aeris portal lookup.
+
+### Tab 8: 💬 Connectivity Assistant
+A conversational chatbot interface where users can query fleet connectivity using natural language. Ask questions like:
+- `show critical vehicles` — vehicles needing urgent attention
+- `Demo-31` — look up a specific vehicle by name
+- `Spain` or `Portugal` — filter by country
+- `Orange ES` or `Vodafone PT` — filter by carrier
+- `214010000000031` — look up by IMSI
+- `35684900003145` — look up by IMEI
+- `GSM` / `2G` / `WCDMA` / `3G` / `LTE` / `4G` — filter by radio technology
+- `fleet summary` — overall fleet health statistics
+- `how many errors` — error count and breakdown by type
+
+*Built using the **Geotab Add-In Architect Gem** (Google Gemini), then enhanced and integrated into the main Add-In with Claude.*
 
 ---
 
 ## The Data Sources
 
-### From Geotab (already in the ecosystem)
+This Add-In combines data from two ecosystems:
 
-| API | Data | Volume (demo DB) |
-|-----|------|-------------------|
-| StatusData | Cellular signal strength (dBm) | 47,096 records / 7 days |
-| StatusData | Radio access technology | 47,063 records / 7 days |
-| StatusData | GPS fix validity | 6,102 records / 7 days |
-| StatusData | Device voltage | 23,613 records / 7 days |
-| FaultData | Device unplugged, power removed, GPS antenna faults | 859 faults / 30 days |
-| Device | Vehicle name, serial, type, position | 50 vehicles |
-| DeviceStatusInfo | Communication status, driving state | Real-time |
+**From Geotab (MyGeotab API):**
+- Device names, IDs, and vehicle metadata
+- GPS coordinates (latitude/longitude) for vehicle positions
+- StatusData for signal strength readings
+- FaultData for device diagnostic codes
+- DeviceStatusInfo for online/offline status
 
-### From Aeris IoT Accelerator (new integration — 7 APIs, 40 endpoints)
+**From Aeris IoT Accelerator (7 REST APIs):**
+- **Subscription Location API** — Cell tower identity (MCC/MNC/LAC/Cell ID), radio technology (LTE/WCDMA/GSM)
+- **Consumer Connectivity API** — SIM data usage (upload/download), plan limits, balance
+- **Device Reconnect API** — PDP context success/failure rates, attach/detach events
+- **Incident Management API** — Open tickets, severity, affected subscriptions
+- **Organization Signaling API** — Fleet-wide KPIs (session success rate, location update rate)
+- **Subscription Signaling Usage API** — Per-SIM signaling event counts
+- **Subscription Signaling Events API** — Detailed error logs (AUTH_FAILURE, PDP_REJECT, etc.)
 
-| API | What It Provides | Spec |
-|-----|-----------------|------|
-| [Subscription Location](api-specs/subscription-location.yaml) | Cell tower identity (MCC/MNC/LAC/CellID), carrier name, radio type | v1.0.2 |
-| [Subscription Signalling Events](api-specs/subscription-signalling-events.yaml) | Low-level network events: ATTACH, DETACH, HANDOVER, PDP_ACTIVATE/DEACTIVATE, TAU | v2.1.4 |
-| [Subscription Signalling Usages](api-specs/subscription-signalling-usages.yaml) | Data uploaded/downloaded per SIM per billing cycle | v2.0.9 |
-| [Consumer Connectivity](api-specs/consumer-connectivity.yaml) | SIM data balance, plan details, low-volume alerts | v2.0.1 |
-| [Incident Management](api-specs/incident-management.yaml) | Network trouble tickets with full lifecycle (NEW → ASSIGNED → RESOLVED) | v0.2.2 |
-| [Org Signaling Aggregations](api-specs/org-signaling-aggregations.yaml) | Fleet-wide traffic stats by carrier, country, APN | v1.0.0 |
-| [Device Reconnect](api-specs/subscription-device-reconnect.yaml) | Remote SIM re-attach to force network re-registration | v1.0.2 |
-
-The OpenAPI specification files in `api-specs/` are the actual API contracts from the Aeris IoT Accelerator platform. Every field in the Add-In's data model maps to a real API response field.
+The 7 OpenAPI specification files in `api-specs/` are the actual API contracts from the Aeris platform.
 
 ---
 
 ## About the Demo Data
 
-This Add-In uses **mock data** for the contest demonstration. Here's why, and what that means:
+This Add-In uses **realistic mock data** for the contest demonstration. The Geotab side runs against a standard Geotab demo database (`Demo_Tim_Vibe_DB` with 50 vehicles). The Aeris side uses mock data generated from the actual OpenAPI specifications.
 
-**The Geotab side** runs against a standard Geotab demo database with 50 simulated vehicles. The demo database provides continuously streaming GPS, diagnostics, and fault data — it's the same sandbox Geotab provides to all developers.
-
-**The Aeris side** uses realistic mock data generated from the actual OpenAPI specifications. The mock data:
-
-Mock data is used because using a live API carries a significant amount of risk for demo purposes. I uploaded .yaml files for your review, and have made Mock scenarios to tie into the demo environment.
-
-- Maps each of the 50 Geotab demo vehicles to an Aeris SIM subscription (by IMSI)
-- Uses real carrier names, MCC/MNC codes, and cell tower structures from the Iberian Peninsula (where the demo fleet operates)
-- Simulates realistic failure scenarios: 5 critical vehicles with weak signal on 2G fallback, 5 warning vehicles with intermittent 3G, 5 minor issues, and 35 healthy
-- Generates network signaling events (ATTACH, DETACH, PDP_ACTIVATE, HANDOVER) with realistic data volumes and timing
-- Creates incident tickets with proper status workflows matching the Aeris API schema
-- Produces error logs with real error codes (AUTH_FAILURE, PDP_REJECT, ATTACH_REJECT, etc.)
-
-**In production**, the Add-In would make live API calls to both Geotab and Aeris. The mock data faithfully represents the data structures, field names, and value ranges from the real APIs — including the kinds of connectivity failures that actual fleets experience.
+This was a deliberate choice to avoid exposing live customer data while demonstrating the full capability of the integrated solution. The mock data includes:
+- **50 vehicles** across Spain and Portugal
+- **4 health tiers**: 60% healthy, 10% minor, 10% warning, 10% critical
+- **3 carriers**: Orange ES, Vodafone PT, NOS PT
+- **3 radio technologies**: LTE (majority), WCDMA, GSM
+- **Realistic error distributions**: Critical vehicles have 16-40 errors with AUTH_FAILURE, GPRS_DETACH; healthy vehicles have 0-1 minor errors
 
 The mock data generation script is included at [`mock-data/generate_mock_data.py`](mock-data/generate_mock_data.py) for full transparency.
 
 ---
 
-## How It Ties Together
+## Installation
 
-The key insight is that every Geotab GO device contains a cellular modem with a SIM card. That SIM has an IMSI (International Mobile Subscriber Identity). This is the link:
+### MyGeotab Add-In Configuration
 
-| Geotab Side | Link | Aeris Side |
-|------------|------|------------|
-| Device ID + Serial | ↔ IMSI / ICC | Subscription ID |
-| GPS position (lat/lon) | ↔ CGI lookup | Cell tower (MCC/MNC/LAC/CellID) |
-| Signal strength (dBm) | ↔ radio type | LTE / 3G / 2G technology |
-| Device faults (unplug/restart) | ↔ events | Network DETACH/ATTACH events |
-| Communication status | ↔ incidents | Trouble tickets + root cause |
-
-By correlating these two perspectives, the Add-In can answer questions that neither platform can answer alone:
-
-> *"Vehicle Demo-31 has weak signal (37 dBm) because it's stuck on a 2G GSM tower (Orange ES #64084) in an area with LTE coverage available — likely a modem issue, not a coverage gap. It has had 25 connection drops in 24 hours, 2 active incidents, and its SIM has consumed 1,296 MB of its 2 GB plan due to excessive retransmissions."*
-
-That's a root-cause diagnosis. Geotab alone would say "37 dBm." Aeris alone would say "SIM is on cell #64084." Only the combination tells the whole story.
-
----
-
-
-### Add-In Configuration
 ```json
 {
   "name": "Fleet Connectivity Intelligence",
-  "supportEmail": "support@example.com",
-  "version": "3.0.1",
+  "supportEmail": "timothy.batzel@telenorconnexion.com",
+  "version": "5.0.0",
   "items": [
     {
-      "url": "fleet_connectivity_v3.html",
+      "url": "fleet_connectivity_v5.html",
       "path": "ActivityLink/",
       "menuName": { "en": "Connectivity Intelligence" }
     }
@@ -143,18 +133,30 @@ That's a root-cause diagnosis. Geotab alone would say "37 dBm." Aeris alone woul
 }
 ```
 
+### Steps to Install
+
+1. Log into your MyGeotab database
+2. Navigate to **Administration → System → System Settings → Add-Ins**
+3. Click **+ New Add-In**
+4. In the **Configuration** tab, paste the JSON above
+5. In the **Files** tab, upload `fleet_connectivity_v5.html`
+6. Click **Done** → **Save** → Refresh the page
+7. "Connectivity Intelligence" appears in the left sidebar
+
+### Standalone Testing
+
+You can also double-click `fleet_connectivity_v5.html` in any web browser to test it outside MyGeotab. All tabs work in standalone mode.
+
 ---
 
 ## Technical Details
 
-- **Single-file architecture**: Self-contained HTML with embedded CSS, JavaScript, and mock data (~123 KB)
-- **Zenith Design System**: Styled using Geotab's official design tokens — Roboto/Roboto Mono fonts, Geotab color palette, component patterns
-- **CSS class prefixing**: All classes prefixed with `fci-` per Geotab's Add-In CSS naming requirements
-- **MyGeotab lifecycle**: Implements `initialize` (with required `callback()`), `focus`, and `blur` methods via `window.geotab.addin.fleetConnectivity`
-- **Standalone fallback**: Detects whether MyGeotab API is available; falls back to standalone mode for demo/testing
-- **Mapping**: Leaflet.js with OpenStreetMap tiles
-- **No build tools required**: No npm, no webpack, no framework — just one HTML file
-- **Export**: Client-side CSV generation with `Blob` and `URL.createObjectURL`
+- **Architecture**: Single self-contained HTML file — all CSS, JavaScript, and mock data are inline. No build tools, no npm, no webpack required.
+- **Styling**: Geotab's official [Zenith Design System](https://zenith.geotab.com/) CSS variables and tokens.
+- **2D Mapping**: [Leaflet.js](https://leafletjs.com/) v1.9.4 with OpenStreetMap tiles.
+- **3D Mapping**: [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/) v3.4.0 with dark globe theme, 3D extrusions, and atmospheric fog.
+- **Export**: Client-side CSV generation using `Blob` and `URL.createObjectURL`.
+- **MyGeotab Integration**: `geotab.addin` lifecycle registration with `initialize`, `focus`, and `blur` callbacks plus `DOMContentLoaded` and `window.load` fallbacks for standalone mode.
 
 ---
 
@@ -162,46 +164,78 @@ That's a root-cause diagnosis. Geotab alone would say "37 dBm." Aeris alone woul
 
 ```
 fleet-connectivity-intelligence/
-├── fleet_connectivity_v3.html              # The Add-In (install this)
-├── addin_config_v3.json                    # MyGeotab configuration
-├── architecture.svg                        # Data flow diagram
-├── README.md                               # This file
-├── LICENSE                                 # Apache 2.0
-├── api-specs/                              # Aeris IoT Accelerator OpenAPI specs
-│   ├── consumer-connectivity.yaml          #   Data balance & plans (18 endpoints)
-│   ├── incident-management.yaml            #   Trouble ticket management (15 endpoints)
-│   ├── org-signaling-aggregations.yaml     #   Fleet-wide traffic aggregations (1 endpoint)
-│   ├── subscription-signalling-usages.yaml #   Data usage reports (2 endpoints)
-│   ├── subscription-signalling-events.yaml #   Network signalling events (2 endpoints)
-│   ├── subscription-location.yaml          #   Cell tower identity (1 endpoint)
-│   └── subscription-device-reconnect.yaml  #   Remote SIM reconnect (1 endpoint)
+├── fleet_connectivity_v5.html          # Main Add-In (v5 — 8 tabs, self-contained)
+├── addin_config_v5.json                # MyGeotab Add-In configuration for v5
+├── fleet_connectivity_v4.html          # Previous version (7 tabs, no 3D map)
+├── addin_config_v4.json                # v4 configuration
+├── fleet_connectivity_v3.html          # Earlier version (6 tabs)
+├── addin_config_v3.json                # v3 configuration
+├── connectivity_assistant.html         # Standalone chatbot (Google Gem output)
+├── addin_config_assistant.json         # Standalone chatbot config
+├── fci-command-center.js               # Firebase Studio 3D prototype (reference only)
+├── fci-command-center.css              # Firebase Studio 3D styles (reference only)
+├── architecture.svg                    # Data flow diagram
+├── PROMPT_JOURNAL.md                   # Full AI development process log
+├── README.md                           # This file
+├── LICENSE                             # Apache 2.0
+├── api-specs/                          # Aeris IoT Accelerator OpenAPI specs
+│   ├── consumer-connectivity-api.yaml
+│   ├── device-reconnect-api.yaml
+│   ├── incident-management-api.yaml
+│   ├── organization-signaling-api.yaml
+│   ├── subscription-location-api.yaml
+│   ├── subscription-signalling-events-api.yaml
+│   └── subscription-signalling-usage-api.yaml
 └── mock-data/
-    └── generate_mock_data.py               # Mock data generation script
+    └── generate_mock_data.py           # Mock data generation script (400+ lines)
 ```
 
----
+### Version History
 
-## What's Next (Production Roadmap)
-
-This contest submission demonstrates the concept with mock data. A production version would add:
-
-1. **Live Aeris API integration** — Replace mock data with real-time calls to all 7 APIs
-2. **Remote Reconnect button** — Use the Device Reconnect API to fix stuck SIMs directly from MyGeotab
-3. **Automated alerting** — Create Geotab Rules that trigger when connectivity health drops below threshold
-4. **Historical trending** — Track signal strength, error rates, and data usage over time
-5. **Multi-fleet support** — Scale to multiple Geotab databases with carrier-level aggregations
-6. **Geotab Marketplace listing** — Package for distribution to all 100,000+ Geotab customers
+| Version | Tabs | What Changed |
+|---------|------|-------------|
+| v3 | 6 | Core dashboard: Alerts, Coverage Map, Fleet Map, Data Usage, Network Diagnostics, Errors & Export |
+| v4 | 7 | Added 💬 Connectivity Assistant chatbot (built with Geotab Add-In Architect Gem) |
+| v5 | 8 | Added 🌐 3D Command Center (prototyped in Firebase Studio, integrated with Claude) |
 
 ---
 
 ## Built With
 
-- **AI-Assisted Development**: Claude (Anthropic) for code generation, architecture design, and documentation
-- **Geotab API**: Device, StatusData, FaultData, DeviceStatusInfo
-- **Aeris IoT Accelerator**: 7 OpenAPI-documented REST APIs (40 endpoints total)
-- **Geotab Zenith Design System**: Official component library tokens and patterns
-- **Leaflet.js**: Interactive mapping
-- **Geotab Vibe Coding Starter Kit**: [github.com/fhoffa/geotab-vibe-guide](https://github.com/fhoffa/geotab-vibe-guide)
+### AI Tools (Vibe Coding)
+- **Claude** (Anthropic) — Primary development assistant. Built all 8 tabs, all CSS/JS, mock data generation, deployment debugging, documentation, and this README. Every line of code was generated through conversation.
+- **Geotab Add-In Architect Gem** (Google Gemini) — Generated the initial Connectivity Assistant chatbot as a MyGeotab Add-In from a natural language description. [Try the Gem](https://gemini.google.com/gem/1Y6IvbBj4ALgS9G3SgGodepM2dfArInrO)
+- **Google Firebase Studio** (Google Gemini 2.5 Pro) — Prototyped the 3D Command Center concept with Mapbox GL JS, which was then rebuilt and integrated into the main Add-In. [Try Firebase Studio](https://firebase.studio)
+
+### Platforms & APIs
+- **[Geotab MyGeotab API](https://geotab.github.io/sdk/software/api/reference/)** — Device, StatusData, FaultData, DeviceStatusInfo
+- **[Aeris IoT Accelerator](https://aerisiot.com/)** — 7 OpenAPI-documented REST APIs for cellular network intelligence
+- **[Geotab Vibe Coding Starter Kit](https://github.com/fhoffa/geotab-vibe-guide)** — Contest resources, tutorials, and Add-In development guides
+
+### Libraries
+- **[Leaflet.js](https://leafletjs.com/)** v1.9.4 — 2D maps (Coverage Heatmap, Fleet Map)
+- **[Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/)** v3.4.0 — 3D globe (Command Center)
+
+### Design
+- **[Geotab Zenith Design System](https://zenith.geotab.com/)** — Official component library CSS tokens and patterns
+
+---
+
+## The Vibe Coding Process
+
+This entire project was built through conversational AI — zero manual coding. See [`PROMPT_JOURNAL.md`](PROMPT_JOURNAL.md) for the complete record of every prompt used across 11 sessions and 50+ interactions.
+
+**The developer's role was:**
+- Domain expertise (knowing what connectivity suppliers and fleet managers actually need)
+- Data provision (supplying real API specifications from the Aeris IoT Accelerator platform)
+- Direction (prioritizing features, choosing architecture trade-offs, making UX decisions)
+- Quality control (testing in MyGeotab, catching broken maps, requesting fixes)
+
+**The AI's role was:**
+- Implementation (translating business requirements into working HTML/JS/CSS)
+- Research (reading Geotab SDK docs, Zenith design system, contest rules)
+- Problem-solving (debugging MyGeotab Add-In installation issues, CSP policies)
+- Documentation (README, architecture diagrams, prompt journal)
 
 ---
 
@@ -209,7 +243,4 @@ This contest submission demonstrates the concept with mock data. A production ve
 
 **Tim Batzel** — Cellular connectivity supplier via Telenor IoT, serving Geotab and their fleet customers on the Aeris IoT Accelerator platform.
 
-Built for the [Geotab Vibe Coding Challenge 2026](https://luma.com/h6ldbaxp) ($25,000 in prizes, Feb 12 – Mar 2, 2026).
-
-*This Add-In doesn't compete with anything in MyGeotab — it fills a blind spot that no existing page addresses.*
-
+Built for the [Geotab Vibe Coding Challenge 2026](https://luma.com/h6ldbaxp).
