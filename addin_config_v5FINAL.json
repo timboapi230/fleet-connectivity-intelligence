@@ -1,0 +1,15 @@
+{
+  "name": "Fleet Connectivity Intelligence",
+  "supportEmail": "timothy.batzel@telenorconnexion.com",
+  "version": "5.0.0",
+  "items": [
+    {
+      "url": "fleet_connectivity_v5.html",
+      "path": "ActivityLink/",
+      "menuName": {
+        "en": "Connectivity Intelligence"
+      }
+    }
+  ],
+  "isSigned": false
+}
